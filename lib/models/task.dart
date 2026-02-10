@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'task.g.dart';
 
+/// Represents a task with title, description, status, and metadata.
 @HiveType(typeId: 0)
 class Task extends HiveObject {
   @HiveField(0)

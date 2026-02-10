@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:glassmorphism/glassmorphism.dart';
 
 class AppTheme {
   static const Color primaryIndigo = Color(0xFF4F46E5);
@@ -232,31 +231,5 @@ class AppTheme {
     );
   }
 
-  static Widget glassCard({required Widget child, double blur = 10, double opacity = 0.1}) {
-    return GlassmorphicContainer(
-      width: double.infinity,
-      height: double.infinity,
-      borderRadius: 16,
-      blur: blur,
-      alignment: Alignment.bottomCenter,
-      border: 2,
-      linearGradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Colors.white.withOpacity(opacity),
-          Colors.white.withOpacity(opacity * 0.5),
-        ],
-      ),
-      borderGradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Colors.white.withOpacity(0.5),
-          Colors.white.withOpacity(0.2),
-        ],
-      ),
-      child: child,
-    );
-  }
+
 }

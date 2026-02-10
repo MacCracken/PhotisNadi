@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'project.g.dart';
 
+/// Represents a project containing tasks with key-based numbering.
 @HiveType(typeId: 7)
 class Project extends HiveObject {
   @HiveField(0)

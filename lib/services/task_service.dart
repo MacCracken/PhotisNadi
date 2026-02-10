@@ -5,6 +5,7 @@ import '../models/task.dart';
 import '../models/ritual.dart';
 import '../models/project.dart';
 
+/// Manages tasks, rituals, and projects with local storage using Hive.
 class TaskService extends ChangeNotifier {
   late Box<Task> _taskBox;
   late Box<Ritual> _ritualBox;

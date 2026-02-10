@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Manages theme preferences and e-reader mode settings.
 class ThemeService extends ChangeNotifier {
   bool _isEReaderMode = false;
   bool _isDarkMode = false;

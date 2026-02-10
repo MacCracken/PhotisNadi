@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'board.g.dart';
 
+/// Represents a Kanban board with columns.
 @HiveType(typeId: 5)
 class Board extends HiveObject {
   @HiveField(0)
@@ -50,6 +51,7 @@ class Board extends HiveObject {
   }
 }
 
+/// Represents a column within a Kanban board.
 @HiveType(typeId: 6)
 class BoardColumn extends HiveObject {
   @HiveField(0)

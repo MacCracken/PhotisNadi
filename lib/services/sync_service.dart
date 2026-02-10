@@ -124,6 +124,7 @@ extension RitualParsing on Ritual {
   }
 }
 
+/// Handles synchronization with Supabase backend.
 class SyncService extends ChangeNotifier {
   late Box<Task> _taskBox;
   late Box<Ritual> _ritualBox;
@@ -214,8 +215,6 @@ class SyncService extends ChangeNotifier {
   Future<void> _uploadTask(Task task, String userId) async {
     try {
       final taskData = task.toSyncMap(userId);
-        'modified_at': task.modifiedAt.toIso8601String(),
-      };
 
       await _supabase.from('tasks').upsert(taskData);
     } catch (e) {

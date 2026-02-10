@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 import 'package:hive_test/hive_test.dart';
 import 'package:photisnadi/models/task.dart';
 import 'package:photisnadi/models/ritual.dart';
+import 'package:photisnadi/models/board.dart';
 import 'package:photisnadi/models/project.dart';
 import 'package:photisnadi/services/task_service.dart';
 
@@ -15,6 +16,8 @@ void _registerAdapters() {
   Hive.registerAdapter(TaskPriorityAdapter());
   Hive.registerAdapter(RitualAdapter());
   Hive.registerAdapter(RitualFrequencyAdapter());
+  Hive.registerAdapter(BoardAdapter());
+  Hive.registerAdapter(BoardColumnAdapter());
   Hive.registerAdapter(ProjectAdapter());
   _adaptersRegistered = true;
 }

@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'ritual.g.dart';
 
+/// Represents a daily ritual or habit with completion tracking.
 @HiveType(typeId: 3)
 class Ritual extends HiveObject {
   @HiveField(0)
