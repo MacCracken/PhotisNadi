@@ -90,7 +90,7 @@
     },
     {
       "name": "flutter_lints",
-      "version": "3.0.2",
+      "version": "6.0.0",
       "dependencies": [
         "lints"
       ]
@@ -171,7 +171,7 @@
     },
     {
       "name": "window_manager",
-      "version": "0.3.9",
+      "version": "0.5.1",
       "dependencies": [
         "flutter",
         "path",
@@ -585,7 +585,7 @@
     },
     {
       "name": "lints",
-      "version": "3.0.0",
+      "version": "6.1.0",
       "dependencies": []
     },
     {
@@ -764,9 +764,13 @@
     },
     {
       "name": "screen_retriever",
-      "version": "0.1.9",
+      "version": "0.2.0",
       "dependencies": [
-        "flutter"
+        "flutter",
+        "screen_retriever_linux",
+        "screen_retriever_macos",
+        "screen_retriever_platform_interface",
+        "screen_retriever_windows"
       ]
     },
     {
@@ -1011,7 +1015,7 @@
     },
     {
       "name": "url_launcher_ios",
-      "version": "6.3.6",
+      "version": "6.4.0",
       "dependencies": [
         "flutter",
         "url_launcher_platform_interface"
@@ -1134,6 +1138,39 @@
       "version": "2.1.8",
       "dependencies": [
         "meta"
+      ]
+    },
+    {
+      "name": "screen_retriever_windows",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "screen_retriever_platform_interface"
+      ]
+    },
+    {
+      "name": "screen_retriever_platform_interface",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "json_annotation",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "screen_retriever_macos",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "screen_retriever_platform_interface"
+      ]
+    },
+    {
+      "name": "screen_retriever_linux",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "screen_retriever_platform_interface"
       ]
     },
     {

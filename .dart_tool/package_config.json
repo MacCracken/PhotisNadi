@@ -201,31 +201,31 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///home/macro/flutter/packages/flutter",
+      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_lints",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/flutter_lints-3.0.2",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/flutter_lints-6.0.0",
       "packageUri": "lib/",
-      "languageVersion": "3.1"
+      "languageVersion": "3.8"
     },
     {
       "name": "flutter_localizations",
-      "rootUri": "file:///home/macro/flutter/packages/flutter_localizations",
+      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_localizations",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///home/macro/flutter/packages/flutter_test",
+      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///home/macro/flutter/packages/flutter_web_plugins",
+      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -363,9 +363,9 @@
     },
     {
       "name": "lints",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/lints-3.0.0",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/lints-6.1.0",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "3.8"
     },
     {
       "name": "logging",
@@ -531,9 +531,33 @@
     },
     {
       "name": "screen_retriever",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/screen_retriever-0.1.9",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/screen_retriever-0.2.0",
       "packageUri": "lib/",
-      "languageVersion": "2.18"
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "screen_retriever_linux",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/screen_retriever_linux-0.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "screen_retriever_macos",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/screen_retriever_macos-0.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "screen_retriever_platform_interface",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/screen_retriever_platform_interface-0.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "screen_retriever_windows",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/screen_retriever_windows-0.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "shared_preferences",
@@ -591,7 +615,7 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///home/macro/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///home/macro/.flutter-sdk/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -699,9 +723,9 @@
     },
     {
       "name": "url_launcher_ios",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.6",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/url_launcher_ios-6.4.0",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "url_launcher_linux",
@@ -777,7 +801,7 @@
     },
     {
       "name": "window_manager",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/window_manager-0.3.9",
+      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/window_manager-0.5.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -808,7 +832,7 @@
   ],
   "generator": "pub",
   "generatorVersion": "3.10.8",
-  "flutterRoot": "file:///home/macro/flutter",
+  "flutterRoot": "file:///home/macro/.flutter-sdk",
   "flutterVersion": "3.38.9",
   "pubCache": "file:///home/macro/.pub-cache"
 }

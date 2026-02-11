@@ -20,14 +20,14 @@ void main() async {
 
   // Initialize Hive
   await Hive.initFlutter();
-  Hive.registerAdapter(const TaskAdapter());
-  Hive.registerAdapter(const TaskStatusAdapter());
-  Hive.registerAdapter(const TaskPriorityAdapter());
-  Hive.registerAdapter(const RitualAdapter());
-  Hive.registerAdapter(const RitualFrequencyAdapter());
-  Hive.registerAdapter(const BoardAdapter());
-  Hive.registerAdapter(const BoardColumnAdapter());
-  Hive.registerAdapter(const ProjectAdapter());
+  Hive.registerAdapter(TaskAdapter());
+  Hive.registerAdapter(TaskStatusAdapter());
+  Hive.registerAdapter(TaskPriorityAdapter());
+  Hive.registerAdapter(RitualAdapter());
+  Hive.registerAdapter(RitualFrequencyAdapter());
+  Hive.registerAdapter(BoardAdapter());
+  Hive.registerAdapter(BoardColumnAdapter());
+  Hive.registerAdapter(ProjectAdapter());
 
   // Open boxes with error handling
   try {
