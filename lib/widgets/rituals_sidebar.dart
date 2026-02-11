@@ -34,7 +34,8 @@ class _RitualsSidebarState extends State<RitualsSidebar> {
         final rituals = taskService.rituals;
         final completedCount = rituals.where((r) => r.isCompleted).length;
         final totalCount = rituals.length;
-        final completionPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0.0;
+        final completionPercentage =
+            totalCount > 0 ? (completedCount / totalCount) * 100 : 0.0;
 
         return Container(
           width: widget.isCollapsed ? 60 : 320,
@@ -62,7 +63,8 @@ class _RitualsSidebarState extends State<RitualsSidebar> {
     );
   }
 
-  Widget _buildHeader(int completedCount, int totalCount, double completionPercentage) {
+  Widget _buildHeader(
+      int completedCount, int totalCount, double completionPercentage) {
     if (widget.isCollapsed) {
       return Container(
         height: 60,
@@ -160,10 +162,13 @@ class _RitualsSidebarState extends State<RitualsSidebar> {
           height: 50,
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           child: GestureDetector(
-            onTap: () => context.read<TaskService>().toggleRitualCompletion(ritual.id),
+            onTap: () =>
+                context.read<TaskService>().toggleRitualCompletion(ritual.id),
             child: Container(
               decoration: BoxDecoration(
-                color: ritual.isCompleted ? Colors.green.shade100 : Colors.grey.shade100,
+                color: ritual.isCompleted
+                    ? Colors.green.shade100
+                    : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: ritual.isCompleted ? Colors.green : Colors.grey,

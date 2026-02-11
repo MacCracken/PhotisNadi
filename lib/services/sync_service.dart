@@ -230,10 +230,11 @@ class SyncService extends ChangeNotifier {
       // Exponential backoff with jitter
       await Future.delayed(delay);
       delay = Duration(
-        milliseconds: (
-          delay.inMilliseconds * RetryConfig.backoffMultiplier +
-          (100 * attempt) // Add jitter
-        ).clamp(0, RetryConfig.maxDelay.inMilliseconds).toInt(),
+        milliseconds: (delay.inMilliseconds * RetryConfig.backoffMultiplier +
+                (100 * attempt) // Add jitter
+            )
+            .clamp(0, RetryConfig.maxDelay.inMilliseconds)
+            .toInt(),
       );
     }
 
@@ -258,10 +259,8 @@ class SyncService extends ChangeNotifier {
 
       final remoteTasks = await _executeWithRetry<List<Task>>(
         operation: () async {
-          final response = await _supabase
-              .from('tasks')
-              .select()
-              .eq('user_id', userId);
+          final response =
+              await _supabase.from('tasks').select().eq('user_id', userId);
 
           final tasks = <Task>[];
           for (final taskData in response) {
@@ -379,10 +378,8 @@ class SyncService extends ChangeNotifier {
 
       final remoteProjects = await _executeWithRetry<List<Project>>(
         operation: () async {
-          final response = await _supabase
-              .from('projects')
-              .select()
-              .eq('user_id', userId);
+          final response =
+              await _supabase.from('projects').select().eq('user_id', userId);
 
           final projects = <Project>[];
           for (final data in response) {
@@ -454,8 +451,7 @@ class SyncService extends ChangeNotifier {
         final remoteProject = remoteMap[project.id]!;
         if (remoteProject.modifiedAt.isAfter(project.modifiedAt)) {
           await _projectBox.put(project.id, remoteProject);
-        } else if (project.modifiedAt
-            .isAfter(remoteProject.modifiedAt)) {
+        } else if (project.modifiedAt.isAfter(remoteProject.modifiedAt)) {
           await _uploadProject(project, userId);
         }
       }
@@ -501,10 +497,8 @@ class SyncService extends ChangeNotifier {
 
       final remoteRituals = await _executeWithRetry<List<Ritual>>(
         operation: () async {
-          final response = await _supabase
-              .from('rituals')
-              .select()
-              .eq('user_id', userId);
+          final response =
+              await _supabase.from('rituals').select().eq('user_id', userId);
 
           final rituals = <Ritual>[];
           for (final ritualData in response) {

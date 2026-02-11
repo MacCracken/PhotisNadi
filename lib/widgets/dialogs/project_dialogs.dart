@@ -346,9 +346,8 @@ void showEditProjectDialog(BuildContext context, Project project) {
                   keyController.text.isNotEmpty) {
                 project.name = nameController.text;
                 project.key = keyController.text.toUpperCase();
-                project.description = descController.text.isNotEmpty
-                    ? descController.text
-                    : null;
+                project.description =
+                    descController.text.isNotEmpty ? descController.text : null;
                 project.color = selectedColor;
                 context.read<TaskService>().updateProject(project);
                 Navigator.pop(context);

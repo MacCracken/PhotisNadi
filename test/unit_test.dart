@@ -78,8 +78,7 @@ void main() {
       expect(result, isTrue);
 
       expect(
-        taskService.tasks.first.modifiedAt
-            .isAfter(originalModifiedAt),
+        taskService.tasks.first.modifiedAt.isAfter(originalModifiedAt),
         isTrue,
       );
     });
@@ -207,7 +206,8 @@ void main() {
       await taskService.addTask('Task', projectId: proj1!.id);
       final task = taskService.getTasksForProject(proj1.id).first;
 
-      final moveResult = await taskService.moveTaskToProject(task.id, proj2!.id);
+      final moveResult =
+          await taskService.moveTaskToProject(task.id, proj2!.id);
       expect(moveResult, isTrue);
 
       expect(taskService.getTasksForProject(proj1.id).length, 0);
@@ -228,8 +228,7 @@ void main() {
       );
 
       // Move second task to done
-      final doneTask =
-          taskService.getTasksForProject(project.id).last;
+      final doneTask = taskService.getTasksForProject(project.id).last;
       final updated = doneTask.copyWith(status: TaskStatus.done);
       final updateResult = await taskService.updateTask(updated);
       expect(updateResult, isTrue);
@@ -314,8 +313,7 @@ void main() {
 
       final nowWeek = Ritual.weekNumber(now);
       final lastWeek = Ritual.weekNumber(lastReset);
-      final shouldReset =
-          nowWeek != lastWeek || now.year != lastReset.year;
+      final shouldReset = nowWeek != lastWeek || now.year != lastReset.year;
 
       expect(shouldReset, isTrue);
     });
@@ -328,8 +326,7 @@ void main() {
 
       final nowWeek = Ritual.weekNumber(now);
       final lastWeek = Ritual.weekNumber(lastReset);
-      final shouldReset =
-          nowWeek != lastWeek || now.year != lastReset.year;
+      final shouldReset = nowWeek != lastWeek || now.year != lastReset.year;
 
       expect(shouldReset, isFalse);
     });
@@ -338,8 +335,8 @@ void main() {
       final lastReset = DateTime(2024, 1, 15);
       final now = DateTime(2024, 2, 1);
 
-      final shouldReset = now.month != lastReset.month ||
-          now.year != lastReset.year;
+      final shouldReset =
+          now.month != lastReset.month || now.year != lastReset.year;
 
       expect(shouldReset, isTrue);
     });
@@ -348,8 +345,8 @@ void main() {
       final lastReset = DateTime(2024, 1, 1);
       final now = DateTime(2024, 1, 31);
 
-      final shouldReset = now.month != lastReset.month ||
-          now.year != lastReset.year;
+      final shouldReset =
+          now.month != lastReset.month || now.year != lastReset.year;
 
       expect(shouldReset, isFalse);
     });

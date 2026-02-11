@@ -23,7 +23,8 @@ void showAddRitualDialog(BuildContext context) {
           const SizedBox(height: 8),
           TextField(
             controller: descController,
-            decoration: const InputDecoration(labelText: 'Description (optional)'),
+            decoration:
+                const InputDecoration(labelText: 'Description (optional)'),
             maxLines: 2,
           ),
         ],
@@ -37,9 +38,11 @@ void showAddRitualDialog(BuildContext context) {
           onPressed: () {
             if (titleController.text.isNotEmpty) {
               context.read<TaskService>().addRitual(
-                titleController.text,
-                description: descController.text.isNotEmpty ? descController.text : null,
-              );
+                    titleController.text,
+                    description: descController.text.isNotEmpty
+                        ? descController.text
+                        : null,
+                  );
               Navigator.pop(context);
             }
           },
@@ -52,8 +55,10 @@ void showAddRitualDialog(BuildContext context) {
 
 /// Shows a dialog to edit an existing ritual
 void showEditRitualDialog(BuildContext context, Ritual ritual) {
-  final TextEditingController titleController = TextEditingController(text: ritual.title);
-  final TextEditingController descController = TextEditingController(text: ritual.description ?? '');
+  final TextEditingController titleController =
+      TextEditingController(text: ritual.title);
+  final TextEditingController descController =
+      TextEditingController(text: ritual.description ?? '');
 
   showDialog(
     context: context,
@@ -69,7 +74,8 @@ void showEditRitualDialog(BuildContext context, Ritual ritual) {
           const SizedBox(height: 8),
           TextField(
             controller: descController,
-            decoration: const InputDecoration(labelText: 'Description (optional)'),
+            decoration:
+                const InputDecoration(labelText: 'Description (optional)'),
             maxLines: 2,
           ),
         ],
@@ -84,7 +90,8 @@ void showEditRitualDialog(BuildContext context, Ritual ritual) {
             if (titleController.text.isNotEmpty) {
               final updatedRitual = ritual.copyWith(
                 title: titleController.text,
-                description: descController.text.isNotEmpty ? descController.text : null,
+                description:
+                    descController.text.isNotEmpty ? descController.text : null,
               );
               context.read<TaskService>().updateRitual(updatedRitual);
               Navigator.pop(context);

@@ -9,9 +9,6 @@ analyzer:
 
 linter:
   rules:
-    - prefer_single_quotes
-    - sort_constructors_first
-    - sort_unnamed_constructors_first
     - always_declare_return_types
     - always_put_control_body_on_new_line
     - always_put_required_named_parameters_first
@@ -76,7 +73,6 @@ linter:
     - one_member_abstracts
     - only_throw_errors
     - overridden_fields
-    - package_api_docs
     - package_names
     - package_prefixed_library_names
     - parameter_assignments
@@ -91,7 +87,6 @@ linter:
     - prefer_const_literals_to_create_immutables
     - prefer_constructors_over_static_methods
     - prefer_contains
-    - prefer_equal_for_default_values
     - prefer_expression_function_bodies
     - prefer_final_fields
     - prefer_final_in_for_each
@@ -111,7 +106,6 @@ linter:
     - prefer_iterable_whereType
     - prefer_null_aware_operators
     - prefer_relative_imports
-    - prefer_single_quotes
     - prefer_spread_collections
     - prefer_typing_uninitialized_variables
     - prefer_void_to_null
@@ -120,9 +114,7 @@ linter:
     - recursive_getters
     - slash_for_doc_comments
     - sort_child_properties_last
-    - sort_constructors_first
     - sort_pub_dependencies
-    - sort_unnamed_constructors_first
     - test_types_in_equals
     - throw_in_finally
     - type_annotate_public_apis
@@ -145,7 +137,6 @@ linter:
     - unnecessary_string_interpolations
     - unnecessary_this
     - unrelated_type_equality_checks
-    - unsafe_html
     - use_build_context_synchronously
     - use_full_hex_values_for_flutter_colors
     - use_function_type_syntax_for_parameters

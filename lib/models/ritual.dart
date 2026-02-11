@@ -7,28 +7,28 @@ part 'ritual.g.dart';
 class Ritual extends HiveObject {
   @HiveField(0)
   String id;
-  
+
   @HiveField(1)
   String title;
-  
+
   @HiveField(2)
   String? description;
-  
+
   @HiveField(3)
   bool isCompleted;
-  
+
   @HiveField(4)
   DateTime createdAt;
-  
+
   @HiveField(5)
   DateTime? lastCompleted;
-  
+
   @HiveField(6)
   DateTime? resetTime;
-  
+
   @HiveField(7)
   int streakCount;
-  
+
   @HiveField(8)
   RitualFrequency frequency;
 
@@ -70,8 +70,8 @@ class Ritual extends HiveObject {
         shouldReset = nowWeek != lastWeek || now.year != lastReset.year;
         break;
       case RitualFrequency.monthly:
-        shouldReset = now.month != lastReset.month ||
-            now.year != lastReset.year;
+        shouldReset =
+            now.month != lastReset.month || now.year != lastReset.year;
         break;
     }
 

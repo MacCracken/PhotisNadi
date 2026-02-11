@@ -67,9 +67,8 @@ class PhotisNadiApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.vibrantTheme,
             darkTheme: AppTheme.vibrantDarkTheme,
-            themeMode: themeService.isEReaderMode 
-                ? ThemeMode.light 
-                : ThemeMode.system,
+            themeMode:
+                themeService.isEReaderMode ? ThemeMode.light : ThemeMode.system,
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,

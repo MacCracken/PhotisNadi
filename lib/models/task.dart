@@ -7,31 +7,31 @@ part 'task.g.dart';
 class Task extends HiveObject {
   @HiveField(0)
   String id;
-  
+
   @HiveField(1)
   String title;
-  
+
   @HiveField(2)
   String? description;
-  
+
   @HiveField(3)
   TaskStatus status;
-  
+
   @HiveField(4)
   TaskPriority priority;
-  
+
   @HiveField(5)
   DateTime createdAt;
-  
+
   @HiveField(6)
   DateTime? dueDate;
-  
+
   @HiveField(7)
   String? projectId;
-  
+
   @HiveField(8)
   List<String> tags;
-  
+
   @HiveField(9)
   String? taskKey;
 

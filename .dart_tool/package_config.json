@@ -201,7 +201,7 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter",
+      "rootUri": "file:///home/macro/flutter/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -213,19 +213,19 @@
     },
     {
       "name": "flutter_localizations",
-      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_localizations",
+      "rootUri": "file:///home/macro/flutter/packages/flutter_localizations",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_test",
+      "rootUri": "file:///home/macro/flutter/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_web_plugins",
+      "rootUri": "file:///home/macro/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -615,7 +615,7 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///home/macro/.flutter-sdk/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///home/macro/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -832,7 +832,7 @@
   ],
   "generator": "pub",
   "generatorVersion": "3.10.8",
-  "flutterRoot": "file:///home/macro/.flutter-sdk",
+  "flutterRoot": "file:///home/macro/flutter",
   "flutterVersion": "3.38.9",
   "pubCache": "file:///home/macro/.pub-cache"
 }

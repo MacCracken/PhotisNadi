@@ -7,19 +7,19 @@ part 'board.g.dart';
 class Board extends HiveObject {
   @HiveField(0)
   String id;
-  
+
   @HiveField(1)
   String title;
-  
+
   @HiveField(2)
   String? description;
-  
+
   @HiveField(3)
   DateTime createdAt;
-  
+
   @HiveField(4)
   List<String> columnIds;
-  
+
   @HiveField(5)
   String color;
 
@@ -56,13 +56,13 @@ class Board extends HiveObject {
 class BoardColumn extends HiveObject {
   @HiveField(0)
   String id;
-  
+
   @HiveField(1)
   String title;
-  
+
   @HiveField(2)
   List<String> taskIds;
-  
+
   @HiveField(3)
   int order;
 

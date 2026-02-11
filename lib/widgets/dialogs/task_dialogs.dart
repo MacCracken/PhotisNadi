@@ -243,9 +243,8 @@ void showEditTaskDialog(BuildContext context, Task task) {
             onPressed: () {
               if (titleController.text.isNotEmpty) {
                 task.title = titleController.text;
-                task.description = descController.text.isNotEmpty
-                    ? descController.text
-                    : null;
+                task.description =
+                    descController.text.isNotEmpty ? descController.text : null;
                 task.priority = selectedPriority;
                 task.status = selectedStatus;
                 context.read<TaskService>().updateTask(task);

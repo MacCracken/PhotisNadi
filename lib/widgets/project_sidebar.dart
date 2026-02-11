@@ -125,7 +125,8 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
                   context.read<TaskService>().selectProject(project.id),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+                  color:
+                      isSelected ? color.withOpacity(0.2) : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isSelected ? color : Colors.transparent,
@@ -259,14 +260,10 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
       color: isSelected ? color.withOpacity(0.1) : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: isSelected
-            ? BorderSide(color: color, width: 2)
-            : BorderSide.none,
+        side: isSelected ? BorderSide(color: color, width: 2) : BorderSide.none,
       ),
       child: InkWell(
-        onTap: isArchived
-            ? null
-            : () => taskService.selectProject(project.id),
+        onTap: isArchived ? null : () => taskService.selectProject(project.id),
         onLongPress: () => showProjectMenu(context, project),
         borderRadius: BorderRadius.circular(8),
         child: Padding(

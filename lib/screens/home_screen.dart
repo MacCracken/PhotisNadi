@@ -136,9 +136,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               if (titleController.text.isNotEmpty) {
                 context.read<TaskService>().addTask(
-                  titleController.text,
-                  description: descController.text.isNotEmpty ? descController.text : null,
-                );
+                      titleController.text,
+                      description: descController.text.isNotEmpty
+                          ? descController.text
+                          : null,
+                    );
                 Navigator.pop(context);
               }
             },
@@ -168,7 +170,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: 'Description (optional)'),
+              decoration:
+                  const InputDecoration(labelText: 'Description (optional)'),
               maxLines: 2,
             ),
           ],
@@ -182,9 +185,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               if (titleController.text.isNotEmpty) {
                 context.read<TaskService>().addRitual(
-                  titleController.text,
-                  description: descController.text.isNotEmpty ? descController.text : null,
-                );
+                      titleController.text,
+                      description: descController.text.isNotEmpty
+                          ? descController.text
+                          : null,
+                    );
                 Navigator.pop(context);
               }
             },

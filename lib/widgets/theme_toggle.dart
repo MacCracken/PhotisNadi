@@ -27,7 +27,9 @@ class ThemeToggle extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    themeService.isEReaderMode ? Icons.check_box : Icons.check_box_outline_blank,
+                    themeService.isEReaderMode
+                        ? Icons.check_box
+                        : Icons.check_box_outline_blank,
                     color: Colors.black,
                   ),
                   const SizedBox(width: 8),
@@ -40,7 +42,9 @@ class ThemeToggle extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    themeService.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                    themeService.isDarkMode
+                        ? Icons.dark_mode
+                        : Icons.light_mode,
                     color: Colors.black,
                   ),
                   const SizedBox(width: 8),

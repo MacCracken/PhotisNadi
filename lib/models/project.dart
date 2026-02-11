@@ -7,28 +7,28 @@ part 'project.g.dart';
 class Project extends HiveObject {
   @HiveField(0)
   String id;
-  
+
   @HiveField(1)
   String name;
-  
+
   @HiveField(2)
   String key;
-  
+
   @HiveField(3)
   String? description;
-  
+
   @HiveField(4)
   DateTime createdAt;
-  
+
   @HiveField(5)
   String color;
-  
+
   @HiveField(6)
   String? iconName;
-  
+
   @HiveField(7)
   int taskCounter;
-  
+
   @HiveField(8)
   bool isArchived;
 

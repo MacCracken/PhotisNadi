@@ -11,19 +11,19 @@ class TaskService extends ChangeNotifier {
   late final Box<Task> _taskBox;
   late final Box<Ritual> _ritualBox;
   late final Box<Project> _projectBox;
-  
+
   List<Task> _tasks = [];
   List<Ritual> _rituals = [];
   List<Project> _projects = [];
-  
+
   String? _selectedProjectId;
 
   List<Task> get tasks => List.unmodifiable(_tasks);
   List<Ritual> get rituals => List.unmodifiable(_rituals);
   List<Project> get projects => List.unmodifiable(_projects);
-  
+
   String? get selectedProjectId => _selectedProjectId;
-  
+
   Project? get selectedProject {
     if (_selectedProjectId == null) return null;
     try {
@@ -40,17 +40,17 @@ class TaskService extends ChangeNotifier {
       _projectBox = await Hive.openBox<Project>('projects');
 
       _loadData();
-      
+
       // Initialize default project if none exists
       if (_projects.isEmpty) {
         await _createDefaultProject();
       }
-      
+
       // Select first project by default
       if (_selectedProjectId == null && _projects.isNotEmpty) {
         _selectedProjectId = _projects.first.id;
       }
-      
+
       // Check for ritual resets
       await _checkRitualResets();
     } catch (e, stackTrace) {
@@ -87,7 +87,7 @@ class TaskService extends ChangeNotifier {
   Future<void> _createDefaultProject() async {
     try {
       const uuid = Uuid();
-      
+
       final project = Project(
         id: uuid.v4(),
         name: 'My Project',
@@ -96,11 +96,11 @@ class TaskService extends ChangeNotifier {
         createdAt: DateTime.now(),
         color: '#4A90E2',
       );
-      
+
       await _projectBox.put(project.id, project);
       _projects.add(project);
       _selectedProjectId = project.id;
-      
+
       notifyListeners();
     } catch (e, stackTrace) {
       developer.log(
@@ -126,13 +126,13 @@ class TaskService extends ChangeNotifier {
       );
     }
   }
-  
+
   // Project selection
   void selectProject(String? projectId) {
     _selectedProjectId = projectId;
     notifyListeners();
   }
-  
+
   // Project CRUD operations
   Future<Project?> addProject(
     String name,
@@ -152,7 +152,7 @@ class TaskService extends ChangeNotifier {
         color: color,
         iconName: iconName,
       );
-      
+
       await _projectBox.put(project.id, project);
       _projects.add(project);
       notifyListeners();
@@ -167,7 +167,7 @@ class TaskService extends ChangeNotifier {
       return null;
     }
   }
-  
+
   Future<bool> updateProject(Project project) async {
     try {
       project.modifiedAt = DateTime.now();
@@ -188,25 +188,26 @@ class TaskService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   Future<bool> deleteProject(String projectId) async {
     try {
       // Delete all tasks in this project
-      final projectTasks = _tasks.where((t) => t.projectId == projectId).toList();
+      final projectTasks =
+          _tasks.where((t) => t.projectId == projectId).toList();
       for (final task in projectTasks) {
         await _taskBox.delete(task.id);
       }
       _tasks.removeWhere((t) => t.projectId == projectId);
-      
+
       // Delete the project
       await _projectBox.delete(projectId);
       _projects.removeWhere((p) => p.id == projectId);
-      
+
       // If deleted project was selected, select another
       if (_selectedProjectId == projectId) {
         _selectedProjectId = _projects.isNotEmpty ? _projects.first.id : null;
       }
-      
+
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -219,21 +220,20 @@ class TaskService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   Future<bool> archiveProject(String projectId) async {
     try {
       final project = _projects.firstWhere((p) => p.id == projectId);
       project.isArchived = true;
       await project.save();
-      
+
       // If archived project was selected, select another active one
       if (_selectedProjectId == projectId) {
         final activeProjects = _projects.where((p) => !p.isArchived).toList();
-        _selectedProjectId = activeProjects.isNotEmpty 
-            ? activeProjects.first.id 
-            : null;
+        _selectedProjectId =
+            activeProjects.isNotEmpty ? activeProjects.first.id : null;
       }
-      
+
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -256,11 +256,11 @@ class TaskService extends ChangeNotifier {
   }) async {
     try {
       const uuid = Uuid();
-      
+
       // Use selected project if no projectId provided
       final targetProjectId = projectId ?? _selectedProjectId;
       String? taskKey;
-      
+
       // Generate task key if project exists
       if (targetProjectId != null) {
         try {
@@ -271,7 +271,7 @@ class TaskService extends ChangeNotifier {
           // Project not found, proceed without key
         }
       }
-      
+
       final task = Task(
         id: uuid.v4(),
         title: title,
@@ -281,7 +281,7 @@ class TaskService extends ChangeNotifier {
         projectId: targetProjectId,
         taskKey: taskKey,
       );
-      
+
       await _taskBox.put(task.id, task);
       _tasks.add(task);
       notifyListeners();
@@ -334,12 +334,12 @@ class TaskService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   Future<bool> moveTaskToProject(String taskId, String? newProjectId) async {
     try {
       final task = _tasks.firstWhere((t) => t.id == taskId);
       task.projectId = newProjectId;
-      
+
       // Generate new task key for new project
       if (newProjectId != null) {
         try {
@@ -352,7 +352,7 @@ class TaskService extends ChangeNotifier {
       } else {
         task.taskKey = null;
       }
-      
+
       await task.save();
       notifyListeners();
       return true;
@@ -377,7 +377,7 @@ class TaskService extends ChangeNotifier {
         description: description,
         createdAt: DateTime.now(),
       );
-      
+
       await _ritualBox.put(ritual.id, ritual);
       _rituals.add(ritual);
       notifyListeners();
@@ -455,16 +455,16 @@ class TaskService extends ChangeNotifier {
     }
     return _tasks.where((task) => task.projectId == projectId).toList();
   }
-  
+
   List<Task> getTasksForSelectedProject() {
     return getTasksForProject(_selectedProjectId);
   }
-  
+
   List<Task> getTasksForColumn(String columnId, {String? projectId}) {
-    final projectTasks = projectId != null 
+    final projectTasks = projectId != null
         ? getTasksForProject(projectId)
         : getTasksForSelectedProject();
-    
+
     return projectTasks.where((task) {
       switch (columnId) {
         case 'todo':
@@ -478,12 +478,12 @@ class TaskService extends ChangeNotifier {
       }
     }).toList();
   }
-  
+
   // Get active (non-archived) projects
   List<Project> get activeProjects {
     return _projects.where((p) => !p.isArchived).toList();
   }
-  
+
   // Get archived projects
   List<Project> get archivedProjects {
     return _projects.where((p) => p.isArchived).toList();
