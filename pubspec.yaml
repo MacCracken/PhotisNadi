@@ -9,29 +9,34 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
   flutter: ">=3.10.0"
 
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  
+   
   # State management
   provider: ^6.1.1
-  
+   
   # Database
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.1
-  
+   
   # Desktop integration
   window_manager: ^0.3.7
   system_tray: ^2.0.3
-  
+   
   # Utilities
   uuid: ^3.0.6
   intl: ^0.20.2
   shared_preferences: ^2.2.2
-  
+   
   # Sync (for future implementation)
   supabase_flutter: ^2.3.3
 
@@ -42,8 +47,3 @@ dev_dependencies:
   hive_generator: ^2.0.1
   build_runner: ^2.4.7
   hive_test: ^1.0.1
-
-  flutter:
-    uses-material-design: true
-    assets:
-      - assets/images/

@@ -59,7 +59,8 @@ void main() {
       final task = taskService.tasks.first;
 
       final updatedTask = task.copyWith(status: TaskStatus.inProgress);
-      await taskService.updateTask(updatedTask);
+      final result = await taskService.updateTask(updatedTask);
+      expect(result, isTrue);
 
       expect(taskService.tasks.first.status, TaskStatus.inProgress);
     });
@@ -73,7 +74,8 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 10));
 
       final updatedTask = task.copyWith(title: 'Updated Title');
-      await taskService.updateTask(updatedTask);
+      final result = await taskService.updateTask(updatedTask);
+      expect(result, isTrue);
 
       expect(
         taskService.tasks.first.modifiedAt
@@ -84,17 +86,19 @@ void main() {
 
     test('should add ritual successfully', () async {
       const ritualTitle = 'Morning Meditation';
-      await taskService.addRitual(ritualTitle);
+      final ritual = await taskService.addRitual(ritualTitle);
 
       expect(taskService.rituals.length, 1);
       expect(taskService.rituals.first.title, ritualTitle);
+      expect(ritual, isNotNull);
     });
 
     test('should toggle ritual completion', () async {
       await taskService.addRitual('Test Ritual');
       final ritualId = taskService.rituals.first.id;
 
-      await taskService.toggleRitualCompletion(ritualId);
+      final result = await taskService.toggleRitualCompletion(ritualId);
+      expect(result, isTrue);
 
       expect(taskService.rituals.first.isCompleted, true);
     });
@@ -128,13 +132,15 @@ void main() {
       );
 
       expect(taskService.projects.length, 2);
-      expect(project.name, 'Work');
+      expect(project, isNotNull);
+      expect(project!.name, 'Work');
       expect(project.key, 'WK');
     });
 
     test('should select project', () async {
       final project = await taskService.addProject('Work', 'WK');
-      taskService.selectProject(project.id);
+      expect(project, isNotNull);
+      taskService.selectProject(project!.id);
 
       expect(taskService.selectedProjectId, project.id);
       expect(taskService.selectedProject?.name, 'Work');
@@ -142,9 +148,11 @@ void main() {
 
     test('should archive project', () async {
       final project = await taskService.addProject('Work', 'WK');
-      taskService.selectProject(project.id);
+      expect(project, isNotNull);
+      taskService.selectProject(project!.id);
 
-      await taskService.archiveProject(project.id);
+      final result = await taskService.archiveProject(project.id);
+      expect(result, isTrue);
 
       expect(taskService.archivedProjects.length, 1);
       expect(
@@ -155,14 +163,16 @@ void main() {
 
     test('should delete project and its tasks', () async {
       final project = await taskService.addProject('Work', 'WK');
+      expect(project, isNotNull);
       await taskService.addTask(
         'Work Task',
-        projectId: project.id,
+        projectId: project!.id,
       );
 
       expect(taskService.getTasksForProject(project.id).length, 1);
 
-      await taskService.deleteProject(project.id);
+      final deleteResult = await taskService.deleteProject(project.id);
+      expect(deleteResult, isTrue);
 
       expect(
         taskService.projects.where((p) => p.id == project.id).length,
@@ -173,9 +183,10 @@ void main() {
 
     test('should assign task key from project', () async {
       final project = await taskService.addProject('Work', 'WK');
+      expect(project, isNotNull);
       await taskService.addTask(
         'First Task',
-        projectId: project.id,
+        projectId: project!.id,
       );
       await taskService.addTask(
         'Second Task',
@@ -190,11 +201,14 @@ void main() {
     test('should move task between projects', () async {
       final proj1 = await taskService.addProject('Project A', 'PA');
       final proj2 = await taskService.addProject('Project B', 'PB');
+      expect(proj1, isNotNull);
+      expect(proj2, isNotNull);
 
-      await taskService.addTask('Task', projectId: proj1.id);
+      await taskService.addTask('Task', projectId: proj1!.id);
       final task = taskService.getTasksForProject(proj1.id).first;
 
-      await taskService.moveTaskToProject(task.id, proj2.id);
+      final moveResult = await taskService.moveTaskToProject(task.id, proj2!.id);
+      expect(moveResult, isTrue);
 
       expect(taskService.getTasksForProject(proj1.id).length, 0);
       expect(taskService.getTasksForProject(proj2.id).length, 1);
@@ -206,7 +220,8 @@ void main() {
 
     test('should filter tasks by column and project', () async {
       final project = await taskService.addProject('Work', 'WK');
-      await taskService.addTask('Todo Task', projectId: project.id);
+      expect(project, isNotNull);
+      await taskService.addTask('Todo Task', projectId: project!.id);
       await taskService.addTask(
         'Done Task',
         projectId: project.id,
@@ -216,7 +231,8 @@ void main() {
       final doneTask =
           taskService.getTasksForProject(project.id).last;
       final updated = doneTask.copyWith(status: TaskStatus.done);
-      await taskService.updateTask(updated);
+      final updateResult = await taskService.updateTask(updated);
+      expect(updateResult, isTrue);
 
       final todoTasks = taskService.getTasksForColumn(
         'todo',
@@ -233,12 +249,14 @@ void main() {
 
     test('should set modifiedAt on project update', () async {
       final project = await taskService.addProject('Work', 'WK');
-      final originalModifiedAt = project.modifiedAt;
+      expect(project, isNotNull);
+      final originalModifiedAt = project!.modifiedAt;
 
       await Future.delayed(const Duration(milliseconds: 10));
 
       project.name = 'Updated Work';
-      await taskService.updateProject(project);
+      final updateResult = await taskService.updateProject(project);
+      expect(updateResult, isTrue);
 
       final updated = taskService.projects.firstWhere(
         (p) => p.id == project.id,

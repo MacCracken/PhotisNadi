@@ -1,22 +1,19 @@
 {
   "roots": [
-    "lumina_flow"
+    "photisnadi"
   ],
   "packages": [
     {
-      "name": "lumina_flow",
+      "name": "photisnadi",
       "version": "1.0.0+1",
       "dependencies": [
         "flutter",
         "flutter_localizations",
-        "flutter_staggered_animations",
-        "glassmorphism",
         "hive",
         "hive_flutter",
         "intl",
         "path_provider",
         "provider",
-        "riverpod",
         "shared_preferences",
         "supabase_flutter",
         "system_tray",
@@ -182,20 +179,6 @@
       ]
     },
     {
-      "name": "glassmorphism",
-      "version": "3.0.0",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
-      "name": "flutter_staggered_animations",
-      "version": "1.1.1",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
       "name": "path_provider",
       "version": "2.1.5",
       "dependencies": [
@@ -223,16 +206,6 @@
       "dependencies": [
         "crypto",
         "meta"
-      ]
-    },
-    {
-      "name": "riverpod",
-      "version": "2.6.1",
-      "dependencies": [
-        "collection",
-        "meta",
-        "stack_trace",
-        "state_notifier"
       ]
     },
     {
@@ -842,13 +815,6 @@
       "dependencies": [
         "flutter",
         "path_provider_platform_interface"
-      ]
-    },
-    {
-      "name": "state_notifier",
-      "version": "1.0.0",
-      "dependencies": [
-        "meta"
       ]
     },
     {

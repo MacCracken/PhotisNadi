@@ -201,7 +201,7 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter",
+      "rootUri": "file:///home/macro/flutter/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -213,25 +213,19 @@
     },
     {
       "name": "flutter_localizations",
-      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_localizations",
+      "rootUri": "file:///home/macro/flutter/packages/flutter_localizations",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
-      "name": "flutter_staggered_animations",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/flutter_staggered_animations-1.1.1",
-      "packageUri": "lib/",
-      "languageVersion": "2.17"
-    },
-    {
       "name": "flutter_test",
-      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_test",
+      "rootUri": "file:///home/macro/flutter/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///home/macro/.flutter-sdk/packages/flutter_web_plugins",
+      "rootUri": "file:///home/macro/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -246,12 +240,6 @@
       "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/functions_client-2.5.0",
       "packageUri": "lib/",
       "languageVersion": "3.0"
-    },
-    {
-      "name": "glassmorphism",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/glassmorphism-3.0.0",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
     },
     {
       "name": "glob",
@@ -536,12 +524,6 @@
       "languageVersion": "3.0"
     },
     {
-      "name": "riverpod",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/riverpod-2.6.1",
-      "packageUri": "lib/",
-      "languageVersion": "2.17"
-    },
-    {
       "name": "rxdart",
       "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/rxdart-0.28.0",
       "packageUri": "lib/",
@@ -609,7 +591,7 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///home/macro/.flutter-sdk/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///home/macro/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -636,12 +618,6 @@
       "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/stack_trace-1.12.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
-    },
-    {
-      "name": "state_notifier",
-      "rootUri": "file:///home/macro/.pub-cache/hosted/pub.dev/state_notifier-1.0.0",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
     },
     {
       "name": "storage_client",
@@ -824,7 +800,7 @@
       "languageVersion": "3.0"
     },
     {
-      "name": "lumina_flow",
+      "name": "photisnadi",
       "rootUri": "../",
       "packageUri": "lib/",
       "languageVersion": "3.0"
@@ -832,7 +808,7 @@
   ],
   "generator": "pub",
   "generatorVersion": "3.10.8",
-  "flutterRoot": "file:///home/macro/.flutter-sdk",
+  "flutterRoot": "file:///home/macro/flutter",
   "flutterVersion": "3.38.9",
   "pubCache": "file:///home/macro/.pub-cache"
 }

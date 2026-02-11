@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive/hive.dart';
@@ -124,56 +126,182 @@ extension RitualParsing on Ritual {
   }
 }
 
+/// Configuration for retry logic
+class RetryConfig {
+  static const int maxRetries = 3;
+  static const Duration initialDelay = Duration(seconds: 1);
+  static const Duration maxDelay = Duration(seconds: 10);
+  static const double backoffMultiplier = 2.0;
+}
+
+/// Configuration for network operations
+class NetworkConfig {
+  static const Duration requestTimeout = Duration(seconds: 30);
+  static const Duration connectionTimeout = Duration(seconds: 10);
+}
+
+/// Custom exception for sync operations
+class SyncException implements Exception {
+  final String message;
+  final dynamic cause;
+
+  SyncException(this.message, {this.cause});
+
+  @override
+  String toString() => 'SyncException: $message';
+}
+
 /// Handles synchronization with Supabase backend.
 class SyncService extends ChangeNotifier {
-  late Box<Task> _taskBox;
-  late Box<Ritual> _ritualBox;
-  late Box<Project> _projectBox;
-  late SupabaseClient _supabase;
+  late final Box<Task> _taskBox;
+  late final Box<Ritual> _ritualBox;
+  late final Box<Project> _projectBox;
+  late final SupabaseClient _supabase;
   bool _isInitialized = false;
   final List<RealtimeChannel> _channels = [];
 
   bool get isInitialized => _isInitialized;
 
-  Future<void> initialize() async {
+  Future<bool> initialize() async {
     try {
       _supabase = Supabase.instance.client;
       _taskBox = await Hive.openBox<Task>('tasks');
       _ritualBox = await Hive.openBox<Ritual>('rituals');
       _projectBox = await Hive.openBox<Project>('projects');
       _isInitialized = true;
-    } catch (e) {
-      debugPrint('Failed to initialize sync service: $e');
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to initialize sync service',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
-  // Task synchronization
-  Future<void> syncTasks() async {
-    if (!_isInitialized) return;
+  /// Helper method to execute an operation with retry logic and timeout
+  Future<T?> _executeWithRetry<T>({
+    required Future<T> Function() operation,
+    required String operationName,
+    int maxRetries = RetryConfig.maxRetries,
+    Duration timeout = NetworkConfig.requestTimeout,
+  }) async {
+    var attempt = 0;
+    var delay = RetryConfig.initialDelay;
 
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return;
+    while (attempt < maxRetries) {
+      try {
+        attempt++;
+        developer.log(
+          'Attempting $operationName (attempt $attempt/$maxRetries)',
+          name: 'SyncService',
+        );
 
-      final localTasks = _taskBox.values.toList();
-
-      final remoteResponse = await _supabase
-          .from('tasks')
-          .select()
-          .eq('user_id', userId);
-
-      final remoteTasks = <Task>[];
-      for (final taskData in remoteResponse) {
-        try {
-          remoteTasks.add(TaskParsing.fromMap(taskData));
-        } catch (e) {
-          debugPrint('Failed to parse task: $e');
+        final result = await operation().timeout(timeout);
+        return result;
+      } on TimeoutException catch (e) {
+        developer.log(
+          '$operationName timed out on attempt $attempt',
+          name: 'SyncService',
+          error: e,
+        );
+        if (attempt >= maxRetries) {
+          throw SyncException(
+            'Operation timed out after $maxRetries attempts: $operationName',
+            cause: e,
+          );
+        }
+      } catch (e) {
+        developer.log(
+          '$operationName failed on attempt $attempt: $e',
+          name: 'SyncService',
+          error: e,
+        );
+        if (attempt >= maxRetries) {
+          throw SyncException(
+            'Operation failed after $maxRetries attempts: $operationName',
+            cause: e,
+          );
         }
       }
 
-      await _mergeTasks(localTasks, remoteTasks, userId);
-    } catch (e) {
-      debugPrint('Failed to sync tasks: $e');
+      // Exponential backoff with jitter
+      await Future.delayed(delay);
+      delay = Duration(
+        milliseconds: (
+          delay.inMilliseconds * RetryConfig.backoffMultiplier +
+          (100 * attempt) // Add jitter
+        ).clamp(0, RetryConfig.maxDelay.inMilliseconds).toInt(),
+      );
+    }
+
+    return null;
+  }
+
+  // Task synchronization
+  Future<bool> syncTasks() async {
+    if (!_isInitialized) return false;
+
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        developer.log(
+          'Cannot sync tasks: No authenticated user',
+          name: 'SyncService',
+        );
+        return false;
+      }
+
+      final localTasks = _taskBox.values.toList();
+
+      final remoteTasks = await _executeWithRetry<List<Task>>(
+        operation: () async {
+          final response = await _supabase
+              .from('tasks')
+              .select()
+              .eq('user_id', userId);
+
+          final tasks = <Task>[];
+          for (final taskData in response) {
+            try {
+              tasks.add(TaskParsing.fromMap(taskData));
+            } catch (e, stackTrace) {
+              developer.log(
+                'Failed to parse task from remote data',
+                name: 'SyncService',
+                error: e,
+                stackTrace: stackTrace,
+              );
+            }
+          }
+          return tasks;
+        },
+        operationName: 'Fetch remote tasks',
+      );
+
+      if (remoteTasks != null) {
+        await _mergeTasks(localTasks, remoteTasks, userId);
+        return true;
+      }
+
+      return false;
+    } on SyncException catch (e) {
+      developer.log(
+        'Failed to sync tasks: ${e.message}',
+        name: 'SyncService',
+        error: e.cause,
+      );
+      return false;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Unexpected error syncing tasks',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
@@ -212,43 +340,89 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  Future<void> _uploadTask(Task task, String userId) async {
+  Future<bool> _uploadTask(Task task, String userId) async {
     try {
       final taskData = task.toSyncMap(userId);
-
-      await _supabase.from('tasks').upsert(taskData);
-    } catch (e) {
-      debugPrint('Failed to upload task: $e');
+      await _executeWithRetry<void>(
+        operation: () async {
+          await _supabase.from('tasks').upsert(taskData);
+        },
+        operationName: 'Upload task ${task.id}',
+      );
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to upload task: ${task.id}',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
   // Project synchronization
-  Future<void> syncProjects() async {
-    if (!_isInitialized) return;
+  Future<bool> syncProjects() async {
+    if (!_isInitialized) return false;
 
     try {
       final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return;
+      if (userId == null) {
+        developer.log(
+          'Cannot sync projects: No authenticated user',
+          name: 'SyncService',
+        );
+        return false;
+      }
 
       final localProjects = _projectBox.values.toList();
 
-      final remoteResponse = await _supabase
-          .from('projects')
-          .select()
-          .eq('user_id', userId);
+      final remoteProjects = await _executeWithRetry<List<Project>>(
+        operation: () async {
+          final response = await _supabase
+              .from('projects')
+              .select()
+              .eq('user_id', userId);
 
-      final remoteProjects = <Project>[];
-      for (final data in remoteResponse) {
-        try {
-          remoteProjects.add(ProjectParsing.fromMap(data));
-        } catch (e) {
-          debugPrint('Failed to parse project: $e');
-        }
+          final projects = <Project>[];
+          for (final data in response) {
+            try {
+              projects.add(ProjectParsing.fromMap(data));
+            } catch (e, stackTrace) {
+              developer.log(
+                'Failed to parse project from remote data',
+                name: 'SyncService',
+                error: e,
+                stackTrace: stackTrace,
+              );
+            }
+          }
+          return projects;
+        },
+        operationName: 'Fetch remote projects',
+      );
+
+      if (remoteProjects != null) {
+        await _mergeProjects(localProjects, remoteProjects, userId);
+        return true;
       }
 
-      await _mergeProjects(localProjects, remoteProjects, userId);
-    } catch (e) {
-      debugPrint('Failed to sync projects: $e');
+      return false;
+    } on SyncException catch (e) {
+      developer.log(
+        'Failed to sync projects: ${e.message}',
+        name: 'SyncService',
+        error: e.cause,
+      );
+      return false;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Unexpected error syncing projects',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
@@ -288,43 +462,89 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  Future<void> _uploadProject(Project project, String userId) async {
+  Future<bool> _uploadProject(Project project, String userId) async {
     try {
       final data = project.toSyncMap(userId);
-
-      await _supabase.from('projects').upsert(data);
-    } catch (e) {
-      debugPrint('Failed to upload project: $e');
+      await _executeWithRetry<void>(
+        operation: () async {
+          await _supabase.from('projects').upsert(data);
+        },
+        operationName: 'Upload project ${project.id}',
+      );
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to upload project: ${project.id}',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
   // Ritual synchronization
-  Future<void> syncRituals() async {
-    if (!_isInitialized) return;
+  Future<bool> syncRituals() async {
+    if (!_isInitialized) return false;
 
     try {
       final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return;
+      if (userId == null) {
+        developer.log(
+          'Cannot sync rituals: No authenticated user',
+          name: 'SyncService',
+        );
+        return false;
+      }
 
       final localRituals = _ritualBox.values.toList();
 
-      final remoteResponse = await _supabase
-          .from('rituals')
-          .select()
-          .eq('user_id', userId);
+      final remoteRituals = await _executeWithRetry<List<Ritual>>(
+        operation: () async {
+          final response = await _supabase
+              .from('rituals')
+              .select()
+              .eq('user_id', userId);
 
-      final remoteRituals = <Ritual>[];
-      for (final ritualData in remoteResponse) {
-        try {
-          remoteRituals.add(RitualParsing.fromMap(ritualData));
-        } catch (e) {
-          debugPrint('Failed to parse ritual: $e');
-        }
+          final rituals = <Ritual>[];
+          for (final ritualData in response) {
+            try {
+              rituals.add(RitualParsing.fromMap(ritualData));
+            } catch (e, stackTrace) {
+              developer.log(
+                'Failed to parse ritual from remote data',
+                name: 'SyncService',
+                error: e,
+                stackTrace: stackTrace,
+              );
+            }
+          }
+          return rituals;
+        },
+        operationName: 'Fetch remote rituals',
+      );
+
+      if (remoteRituals != null) {
+        await _mergeRituals(localRituals, remoteRituals, userId);
+        return true;
       }
 
-      await _mergeRituals(localRituals, remoteRituals, userId);
-    } catch (e) {
-      debugPrint('Failed to sync rituals: $e');
+      return false;
+    } on SyncException catch (e) {
+      developer.log(
+        'Failed to sync rituals: ${e.message}',
+        name: 'SyncService',
+        error: e.cause,
+      );
+      return false;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Unexpected error syncing rituals',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
@@ -349,23 +569,36 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  Future<void> _uploadRitual(Ritual ritual, String userId) async {
+  Future<bool> _uploadRitual(Ritual ritual, String userId) async {
     try {
       final ritualData = ritual.toSyncMap(userId);
-
-      await _supabase.from('rituals').upsert(ritualData);
-    } catch (e) {
-      debugPrint('Failed to upload ritual: $e');
+      await _executeWithRetry<void>(
+        operation: () async {
+          await _supabase.from('rituals').upsert(ritualData);
+        },
+        operationName: 'Upload ritual ${ritual.id}',
+      );
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to upload ritual: ${ritual.id}',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 
   // Full synchronization
-  Future<void> syncAll() async {
-    if (!_isInitialized) return;
+  Future<bool> syncAll() async {
+    if (!_isInitialized) return false;
 
-    await syncProjects();
-    await syncTasks();
-    await syncRituals();
+    final projectsResult = await syncProjects();
+    final tasksResult = await syncTasks();
+    final ritualsResult = await syncRituals();
+
+    return projectsResult && tasksResult && ritualsResult;
   }
 
   // Background sync
