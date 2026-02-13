@@ -58,7 +58,7 @@ extension ProjectParsing on Project {
     return Project(
       id: data['id'] as String,
       name: data['name'] as String,
-      key: data['key'] as String,
+      projectKey: data['key'] as String,
       description: data['description'] as String?,
       createdAt: DateTime.parse(data['created_at'] as String),
       color: data['color'] ?? '#4A90E2',
@@ -76,7 +76,7 @@ extension ProjectParsing on Project {
       'id': id,
       'user_id': userId,
       'name': name,
-      'key': key,
+      'key': projectKey,
       'description': description,
       'created_at': createdAt.toIso8601String(),
       'color': color,

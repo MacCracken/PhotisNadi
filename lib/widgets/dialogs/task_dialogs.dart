@@ -31,7 +31,7 @@ void showAddTaskDialog(BuildContext context, {String? columnId}) {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<TaskPriority>(
-              value: selectedPriority,
+              initialValue: selectedPriority,
               decoration: const InputDecoration(labelText: 'Priority'),
               items: TaskPriority.values.map((priority) {
                 return DropdownMenuItem(
@@ -323,7 +323,7 @@ void showMoveToProjectDialog(BuildContext context, Task task) {
                 ),
               ),
               title: Text(project.name),
-              subtitle: Text(project.key),
+              subtitle: Text(project.projectKey),
               trailing: isCurrentProject
                   ? const Icon(Icons.check, color: Colors.green)
                   : null,

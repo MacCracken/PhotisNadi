@@ -88,6 +88,10 @@ enum TaskStatus {
   @HiveField(1)
   inProgress,
   @HiveField(2)
+  inReview,
+  @HiveField(3)
+  blocked,
+  @HiveField(4)
   done,
 }
 

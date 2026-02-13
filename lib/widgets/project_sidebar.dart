@@ -63,7 +63,7 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
 
   Widget _buildHeader() {
     if (widget.isCollapsed) {
-      return Container(
+      return SizedBox(
         height: 60,
         child: Center(
           child: IconButton(
@@ -136,9 +136,9 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
                 ),
                 child: Center(
                   child: Text(
-                    project.key.length > 2
-                        ? project.key.substring(0, 2)
-                        : project.key,
+                    project.projectKey.length > 2
+                        ? project.projectKey.substring(0, 2)
+                        : project.projectKey,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: color,
@@ -280,9 +280,9 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
                 ),
                 child: Center(
                   child: Text(
-                    project.key.length > 2
-                        ? project.key.substring(0, 2)
-                        : project.key,
+                    project.projectKey.length > 2
+                        ? project.projectKey.substring(0, 2)
+                        : project.projectKey,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

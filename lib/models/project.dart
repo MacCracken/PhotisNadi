@@ -1,4 +1,6 @@
 import 'package:hive/hive.dart';
+import 'board.dart';
+import 'task.dart';
 
 part 'project.g.dart';
 
@@ -12,7 +14,7 @@ class Project extends HiveObject {
   String name;
 
   @HiveField(2)
-  String key;
+  String projectKey;
 
   @HiveField(3)
   String? description;
@@ -35,10 +37,36 @@ class Project extends HiveObject {
   @HiveField(9)
   DateTime modifiedAt;
 
+  @HiveField(10)
+  List<BoardColumn> columns;
+
+  static List<BoardColumn> defaultColumns() {
+    return [
+      BoardColumn(
+          id: 'todo', title: 'To Do', order: 0, status: TaskStatus.todo),
+      BoardColumn(
+          id: 'in_progress',
+          title: 'In Progress',
+          order: 1,
+          status: TaskStatus.inProgress),
+      BoardColumn(
+          id: 'in_review',
+          title: 'In Review',
+          order: 2,
+          status: TaskStatus.inReview),
+      BoardColumn(
+          id: 'blocked',
+          title: 'Blocked',
+          order: 3,
+          status: TaskStatus.blocked),
+      BoardColumn(id: 'done', title: 'Done', order: 4, status: TaskStatus.done),
+    ];
+  }
+
   Project({
     required this.id,
     required this.name,
-    required this.key,
+    required this.projectKey,
     this.description,
     required this.createdAt,
     this.color = '#4A90E2',
@@ -46,17 +74,19 @@ class Project extends HiveObject {
     this.taskCounter = 0,
     this.isArchived = false,
     DateTime? modifiedAt,
-  }) : modifiedAt = modifiedAt ?? createdAt;
+    List<BoardColumn>? columns,
+  })  : modifiedAt = modifiedAt ?? createdAt,
+        columns = columns ?? defaultColumns();
 
   String get nextTaskKey {
     taskCounter++;
-    return '$key-$taskCounter';
+    return '$projectKey-$taskCounter';
   }
 
   Project copyWith({
     String? id,
     String? name,
-    String? key,
+    String? projectKey,
     String? description,
     DateTime? createdAt,
     String? color,
@@ -64,11 +94,12 @@ class Project extends HiveObject {
     int? taskCounter,
     bool? isArchived,
     DateTime? modifiedAt,
+    List<BoardColumn>? columns,
   }) {
     return Project(
       id: id ?? this.id,
       name: name ?? this.name,
-      key: key ?? this.key,
+      projectKey: projectKey ?? this.projectKey,
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       color: color ?? this.color,
@@ -76,6 +107,7 @@ class Project extends HiveObject {
       taskCounter: taskCounter ?? this.taskCounter,
       isArchived: isArchived ?? this.isArchived,
       modifiedAt: modifiedAt ?? this.modifiedAt,
+      columns: columns ?? this.columns,
     );
   }
 }

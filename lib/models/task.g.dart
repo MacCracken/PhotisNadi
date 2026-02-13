@@ -82,6 +82,10 @@ class TaskStatusAdapter extends TypeAdapter<TaskStatus> {
       case 1:
         return TaskStatus.inProgress;
       case 2:
+        return TaskStatus.inReview;
+      case 3:
+        return TaskStatus.blocked;
+      case 4:
         return TaskStatus.done;
       default:
         return TaskStatus.todo;
@@ -97,8 +101,14 @@ class TaskStatusAdapter extends TypeAdapter<TaskStatus> {
       case TaskStatus.inProgress:
         writer.writeByte(1);
         break;
-      case TaskStatus.done:
+      case TaskStatus.inReview:
         writer.writeByte(2);
+        break;
+      case TaskStatus.blocked:
+        writer.writeByte(3);
+        break;
+      case TaskStatus.done:
+        writer.writeByte(4);
         break;
     }
   }
@@ -128,7 +138,7 @@ class TaskPriorityAdapter extends TypeAdapter<TaskPriority> {
       case 2:
         return TaskPriority.high;
       default:
-        return TaskPriority.medium;
+        return TaskPriority.low;
     }
   }
 

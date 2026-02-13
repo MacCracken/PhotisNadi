@@ -70,13 +70,15 @@ class BoardColumnAdapter extends TypeAdapter<BoardColumn> {
       title: fields[1] as String,
       taskIds: (fields[2] as List).cast<String>(),
       order: fields[3] as int,
+      color: fields[4] as String,
+      status: fields[5] as TaskStatus,
     );
   }
 
   @override
   void write(BinaryWriter writer, BoardColumn obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -84,7 +86,11 @@ class BoardColumnAdapter extends TypeAdapter<BoardColumn> {
       ..writeByte(2)
       ..write(obj.taskIds)
       ..writeByte(3)
-      ..write(obj.order);
+      ..write(obj.order)
+      ..writeByte(4)
+      ..write(obj.color)
+      ..writeByte(5)
+      ..write(obj.status);
   }
 
   @override

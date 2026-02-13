@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'task.dart';
 
 part 'board.g.dart';
 
@@ -66,11 +67,19 @@ class BoardColumn extends HiveObject {
   @HiveField(3)
   int order;
 
+  @HiveField(4)
+  String color;
+
+  @HiveField(5)
+  TaskStatus status;
+
   BoardColumn({
     required this.id,
     required this.title,
     this.taskIds = const [],
     this.order = 0,
+    this.color = '#6B7280',
+    required this.status,
   });
 
   BoardColumn copyWith({
@@ -78,12 +87,16 @@ class BoardColumn extends HiveObject {
     String? title,
     List<String>? taskIds,
     int? order,
+    String? color,
+    TaskStatus? status,
   }) {
     return BoardColumn(
       id: id ?? this.id,
       title: title ?? this.title,
       taskIds: taskIds ?? this.taskIds,
       order: order ?? this.order,
+      color: color ?? this.color,
+      status: status ?? this.status,
     );
   }
 }

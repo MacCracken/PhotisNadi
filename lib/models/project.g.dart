@@ -19,7 +19,7 @@ class ProjectAdapter extends TypeAdapter<Project> {
     return Project(
       id: fields[0] as String,
       name: fields[1] as String,
-      key: fields[2] as String,
+      projectKey: fields[2] as String,
       description: fields[3] as String?,
       createdAt: fields[4] as DateTime,
       color: fields[5] as String,
@@ -27,19 +27,20 @@ class ProjectAdapter extends TypeAdapter<Project> {
       taskCounter: fields[7] as int,
       isArchived: fields[8] as bool,
       modifiedAt: fields[9] as DateTime?,
+      columns: (fields[10] as List?)?.cast<BoardColumn>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Project obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.name)
       ..writeByte(2)
-      ..write(obj.key)
+      ..write(obj.projectKey)
       ..writeByte(3)
       ..write(obj.description)
       ..writeByte(4)
@@ -53,7 +54,9 @@ class ProjectAdapter extends TypeAdapter<Project> {
       ..writeByte(8)
       ..write(obj.isArchived)
       ..writeByte(9)
-      ..write(obj.modifiedAt);
+      ..write(obj.modifiedAt)
+      ..writeByte(10)
+      ..write(obj.columns);
   }
 
   @override

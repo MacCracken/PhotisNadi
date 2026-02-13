@@ -133,7 +133,7 @@ void main() {
       expect(taskService.projects.length, 2);
       expect(project, isNotNull);
       expect(project!.name, 'Work');
-      expect(project.key, 'WK');
+      expect(project.projectKey, 'WK');
     });
 
     test('should select project', () async {
@@ -396,7 +396,7 @@ void main() {
       final project = Project(
         id: '1',
         name: 'Test',
-        key: 'TST',
+        projectKey: 'TST',
         createdAt: DateTime(2024, 1, 1),
       );
 
@@ -410,7 +410,7 @@ void main() {
       final project = Project(
         id: '1',
         name: 'Test',
-        key: 'TST',
+        projectKey: 'TST',
         description: 'A project',
         createdAt: DateTime(2024, 1, 1),
         color: '#FF0000',
@@ -423,7 +423,7 @@ void main() {
 
       expect(copy.name, 'Updated');
       expect(copy.id, '1');
-      expect(copy.key, 'TST');
+      expect(copy.projectKey, 'TST');
       expect(copy.description, 'A project');
       expect(copy.color, '#FF0000');
       expect(copy.iconName, 'star');
@@ -436,11 +436,67 @@ void main() {
       final project = Project(
         id: '1',
         name: 'Test',
-        key: 'TST',
+        projectKey: 'TST',
         createdAt: now,
       );
 
       expect(project.modifiedAt, now);
+    });
+  });
+
+  group('Board Model Tests', () {
+    test('BoardColumn should store tasks', () {
+      final column = BoardColumn(
+        id: 'col-1',
+        title: 'To Do',
+        taskIds: ['task-1', 'task-2'],
+        status: TaskStatus.todo,
+      );
+
+      expect(column.taskIds.length, 2);
+      expect(column.title, 'To Do');
+    });
+
+    test('Board should store column ids', () {
+      final board = Board(
+        id: 'board-1',
+        title: 'Main Board',
+        createdAt: DateTime(2024, 1, 1),
+        columnIds: ['col-1', 'col-2', 'col-3'],
+      );
+
+      expect(board.columnIds.length, 3);
+      expect(board.title, 'Main Board');
+    });
+
+    test('BoardColumn copyWith should preserve fields', () {
+      final column = BoardColumn(
+        id: 'col-1',
+        title: 'To Do',
+        taskIds: ['task-1'],
+        status: TaskStatus.todo,
+      );
+
+      final copy = column.copyWith(title: 'In Progress');
+
+      expect(copy.title, 'In Progress');
+      expect(copy.id, 'col-1');
+      expect(copy.taskIds, ['task-1']);
+    });
+
+    test('Board copyWith should preserve fields', () {
+      final board = Board(
+        id: 'board-1',
+        title: 'Main Board',
+        createdAt: DateTime(2024, 1, 1),
+        columnIds: ['col-1'],
+      );
+
+      final copy = board.copyWith(title: 'Updated Board');
+
+      expect(copy.title, 'Updated Board');
+      expect(copy.id, 'board-1');
+      expect(copy.columnIds, ['col-1']);
     });
   });
 }

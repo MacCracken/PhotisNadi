@@ -243,7 +243,7 @@ void showEditProjectDialog(BuildContext context, Project project) {
   final TextEditingController nameController =
       TextEditingController(text: project.name);
   final TextEditingController keyController =
-      TextEditingController(text: project.key);
+      TextEditingController(text: project.projectKey);
   final TextEditingController descController =
       TextEditingController(text: project.description ?? '');
   String selectedColor = project.color;
@@ -345,7 +345,7 @@ void showEditProjectDialog(BuildContext context, Project project) {
               if (nameController.text.isNotEmpty &&
                   keyController.text.isNotEmpty) {
                 project.name = nameController.text;
-                project.key = keyController.text.toUpperCase();
+                project.projectKey = keyController.text.toUpperCase();
                 project.description =
                     descController.text.isNotEmpty ? descController.text : null;
                 project.color = selectedColor;

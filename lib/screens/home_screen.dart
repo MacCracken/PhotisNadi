@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isProjectsCollapsed = false;
   bool _isRitualsCollapsed = false;
+  int _selectedNavIndex = 1;
 
   @override
   void initState() {
@@ -27,8 +28,17 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  bool get _isWideScreen => MediaQuery.of(context).size.width > 800;
+
   @override
   Widget build(BuildContext context) {
+    if (_isWideScreen) {
+      return _buildWideLayout();
+    }
+    return _buildNarrowLayout();
+  }
+
+  Widget _buildWideLayout() {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Photis Nadi'),
@@ -56,6 +66,54 @@ class _HomeScreenState extends State<HomeScreen> {
                 _isRitualsCollapsed = !_isRitualsCollapsed;
               });
             },
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showQuickAddMenu,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildNarrowLayout() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Photis Nadi'),
+        actions: const [
+          ThemeToggle(),
+        ],
+      ),
+      body: IndexedStack(
+        index: _selectedNavIndex,
+        children: [
+          ProjectSidebar(isCollapsed: false, onToggleCollapse: () {}),
+          const KanbanBoard(),
+          RitualsSidebar(isCollapsed: false, onToggleCollapse: () {}),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedNavIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedNavIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.folder_outlined),
+            selectedIcon: Icon(Icons.folder),
+            label: 'Projects',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.view_kanban_outlined),
+            selectedIcon: Icon(Icons.view_kanban),
+            label: 'Board',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.repeat_outlined),
+            selectedIcon: Icon(Icons.repeat),
+            label: 'Rituals',
           ),
         ],
       ),

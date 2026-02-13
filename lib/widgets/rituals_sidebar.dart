@@ -66,7 +66,7 @@ class _RitualsSidebarState extends State<RitualsSidebar> {
   Widget _buildHeader(
       int completedCount, int totalCount, double completionPercentage) {
     if (widget.isCollapsed) {
-      return Container(
+      return SizedBox(
         height: 60,
         child: Stack(
           children: [

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../models/task.dart';
 import '../models/ritual.dart';
 import '../models/project.dart';
+import '../models/board.dart';
 
 /// Manages tasks, rituals, and projects with local storage using Hive.
 class TaskService extends ChangeNotifier {
@@ -91,7 +92,7 @@ class TaskService extends ChangeNotifier {
       final project = Project(
         id: uuid.v4(),
         name: 'My Project',
-        key: 'MP',
+        projectKey: 'MP',
         description: 'Default project for tasks',
         createdAt: DateTime.now(),
         color: '#4A90E2',
@@ -146,7 +147,7 @@ class TaskService extends ChangeNotifier {
       final project = Project(
         id: uuid.v4(),
         name: name,
-        key: key.toUpperCase(),
+        projectKey: key.toUpperCase(),
         description: description,
         createdAt: DateTime.now(),
         color: color,
@@ -461,22 +462,23 @@ class TaskService extends ChangeNotifier {
   }
 
   List<Task> getTasksForColumn(String columnId, {String? projectId}) {
+    final project = projectId != null
+        ? _projects.firstWhere((p) => p.id == projectId,
+            orElse: () => _projects.first)
+        : selectedProject;
+
+    if (project == null) return [];
+
+    final column = project.columns.firstWhere(
+      (c) => c.id == columnId,
+      orElse: () => project.columns.first,
+    );
+
     final projectTasks = projectId != null
         ? getTasksForProject(projectId)
         : getTasksForSelectedProject();
 
-    return projectTasks.where((task) {
-      switch (columnId) {
-        case 'todo':
-          return task.status == TaskStatus.todo;
-        case 'in_progress':
-          return task.status == TaskStatus.inProgress;
-        case 'done':
-          return task.status == TaskStatus.done;
-        default:
-          return false;
-      }
-    }).toList();
+    return projectTasks.where((task) => task.status == column.status).toList();
   }
 
   // Get active (non-archived) projects
@@ -487,5 +489,114 @@ class TaskService extends ChangeNotifier {
   // Get archived projects
   List<Project> get archivedProjects {
     return _projects.where((p) => p.isArchived).toList();
+  }
+
+  // Column management
+  Future<bool> addColumn(String projectId, BoardColumn column) async {
+    try {
+      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
+      if (projectIndex == -1) return false;
+
+      final project = _projects[projectIndex];
+      final updatedColumns = List<BoardColumn>.from(project.columns)
+        ..add(column.copyWith(order: project.columns.length));
+
+      _projects[projectIndex] = project.copyWith(columns: updatedColumns);
+      await _projectBox.put(project.id, _projects[projectIndex]);
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to add column',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> updateColumn(String projectId, BoardColumn column) async {
+    try {
+      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
+      if (projectIndex == -1) return false;
+
+      final project = _projects[projectIndex];
+      final updatedColumns = project.columns.map((c) {
+        return c.id == column.id ? column : c;
+      }).toList();
+
+      _projects[projectIndex] = project.copyWith(columns: updatedColumns);
+      await _projectBox.put(project.id, _projects[projectIndex]);
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to update column',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> deleteColumn(String projectId, String columnId) async {
+    try {
+      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
+      if (projectIndex == -1) return false;
+
+      final project = _projects[projectIndex];
+      final updatedColumns =
+          project.columns.where((c) => c.id != columnId).toList();
+
+      for (var i = 0; i < updatedColumns.length; i++) {
+        updatedColumns[i] = updatedColumns[i].copyWith(order: i);
+      }
+
+      _projects[projectIndex] = project.copyWith(columns: updatedColumns);
+      await _projectBox.put(project.id, _projects[projectIndex]);
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to delete column',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> reorderColumns(String projectId, List<String> columnIds) async {
+    try {
+      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
+      if (projectIndex == -1) return false;
+
+      final project = _projects[projectIndex];
+      final columnMap = {for (var c in project.columns) c.id: c};
+
+      final updatedColumns = <BoardColumn>[];
+      for (var i = 0; i < columnIds.length; i++) {
+        final column = columnMap[columnIds[i]];
+        if (column != null) {
+          updatedColumns.add(column.copyWith(order: i));
+        }
+      }
+
+      _projects[projectIndex] = project.copyWith(columns: updatedColumns);
+      await _projectBox.put(project.id, _projects[projectIndex]);
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to reorder columns',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
   }
 }
