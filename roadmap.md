@@ -29,6 +29,7 @@ Cross-platform productivity app combining Kanban-style task management with dail
 
 ### v2026.3.5
 - Tags System: Create/edit/delete tags with colors, multi-tag filtering, tag management UI
+- Supabase Sync: Auth flow, cloud backup, cross-device sync, conflict resolution UI, auto-sync
 
 ## Planned Features
 
@@ -51,10 +52,10 @@ Cross-platform productivity app combining Kanban-style task management with dail
 
 ### Medium Priority
 
-4. **Supabase Sync**
-   - Cloud backup & restore
-   - Cross-device sync
-   - Conflict resolution UI
+4. ~~Supabase Sync~~
+   - ~~Cloud backup & restore~~
+   - ~~Cross-device sync~~
+   - ~~Conflict resolution UI~~
 
 5. ~~Tags System~~
    - ~~Create/edit/delete tags~~

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'themes/app_theme.dart';
 import 'models/board.dart';
 import 'models/project.dart';
@@ -42,17 +43,37 @@ void main() async {
     // Continue without boxes - app will work with empty data
   }
 
+  // Initialize Supabase (optional — sync works only when configured)
+  const supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: '',
+  );
+  const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: '',
+  );
+  if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
+    await Supabase.initialize(
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
+    );
+  }
+
   // Initialize desktop integration
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     await DesktopIntegration.initializeWindowManager();
     await DesktopIntegration.setupSystemTray();
   }
 
-  runApp(const PhotisNadiApp());
+  runApp(PhotisNadiApp(
+    supabaseConfigured: supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty,
+  ));
 }
 
 class PhotisNadiApp extends StatelessWidget {
-  const PhotisNadiApp({super.key});
+  final bool supabaseConfigured;
+
+  const PhotisNadiApp({super.key, this.supabaseConfigured = false});
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +81,13 @@ class PhotisNadiApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => TaskService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
-        ChangeNotifierProvider(create: (_) => SyncService()),
+        ChangeNotifierProvider(create: (_) {
+          final syncService = SyncService();
+          if (supabaseConfigured) {
+            syncService.initialize();
+          }
+          return syncService;
+        }),
       ],
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {

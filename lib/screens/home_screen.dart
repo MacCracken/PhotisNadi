@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/task_service.dart';
 import '../services/theme_service.dart';
+import '../services/sync_service.dart';
 import '../services/keyboard_shortcuts.dart';
+import '../widgets/dialogs/sync_dialogs.dart';
 import '../widgets/kanban_board.dart';
 import '../widgets/project_sidebar.dart';
 import '../widgets/rituals_sidebar.dart';
@@ -246,12 +248,68 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSyncIcon() {
+    return Consumer<SyncService>(
+      builder: (context, syncService, _) {
+        if (!syncService.isInitialized) return const SizedBox.shrink();
+
+        IconData icon;
+        Color? color;
+        switch (syncService.syncState) {
+          case SyncState.idle:
+            icon = syncService.isAuthenticated
+                ? Icons.cloud_queue
+                : Icons.cloud_off;
+            color = Colors.grey;
+          case SyncState.syncing:
+            icon = Icons.cloud_sync;
+            color = Colors.blue;
+          case SyncState.success:
+            icon = Icons.cloud_done;
+            color = Colors.green;
+          case SyncState.error:
+            icon = Icons.cloud_off;
+            color = Colors.red;
+        }
+
+        return Stack(
+          children: [
+            IconButton(
+              icon: Icon(icon, color: color),
+              tooltip: 'Cloud Sync',
+              onPressed: () => showSyncSettingsDialog(context),
+            ),
+            if (syncService.hasConflicts)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).appBarTheme.backgroundColor ??
+                          Theme.of(context).colorScheme.surface,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildWideLayout() {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Photis Nadi'),
-        actions: const [
-          ThemeToggle(),
+        actions: [
+          _buildSyncIcon(),
+          const ThemeToggle(),
         ],
       ),
       body: Row(
@@ -289,8 +347,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Photis Nadi'),
-        actions: const [
-          ThemeToggle(),
+        actions: [
+          _buildSyncIcon(),
+          const ThemeToggle(),
         ],
       ),
       body: IndexedStack(

@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import '../models/task.dart';
 import '../models/ritual.dart';
 import '../models/project.dart';
+import '../models/tag.dart';
 
 // Extension methods for model parsing
 extension TaskParsing on Task {
@@ -32,6 +33,7 @@ extension TaskParsing on Task {
       modifiedAt: data['modified_at'] != null
           ? DateTime.parse(data['modified_at'] as String)
           : DateTime.parse(data['created_at'] as String),
+      dependsOn: List<String>.from(data['depends_on'] ?? []),
     );
   }
 
@@ -49,6 +51,7 @@ extension TaskParsing on Task {
       'tags': tags,
       'task_key': taskKey,
       'modified_at': modifiedAt.toIso8601String(),
+      'depends_on': dependsOn,
     };
   }
 }
@@ -126,6 +129,27 @@ extension RitualParsing on Ritual {
   }
 }
 
+extension TagParsing on Tag {
+  static Tag fromMap(Map<String, dynamic> data) {
+    return Tag(
+      id: data['id'] as String,
+      name: data['name'] as String,
+      color: data['color'] as String,
+      projectId: data['project_id'] as String,
+    );
+  }
+
+  Map<String, dynamic> toSyncMap(String userId) {
+    return {
+      'id': id,
+      'user_id': userId,
+      'name': name,
+      'color': color,
+      'project_id': projectId,
+    };
+  }
+}
+
 /// Configuration for retry logic
 class RetryConfig {
   static const int maxRetries = 3;
@@ -151,16 +175,65 @@ class SyncException implements Exception {
   String toString() => 'SyncException: $message';
 }
 
+/// Represents a sync conflict between local and remote data.
+class SyncConflict {
+  final String entityType; // 'task', 'project', 'ritual'
+  final String entityId;
+  final String entityTitle;
+  final DateTime localModifiedAt;
+  final DateTime remoteModifiedAt;
+  final Map<String, dynamic> localData;
+  final Map<String, dynamic> remoteData;
+
+  SyncConflict({
+    required this.entityType,
+    required this.entityId,
+    required this.entityTitle,
+    required this.localModifiedAt,
+    required this.remoteModifiedAt,
+    required this.localData,
+    required this.remoteData,
+  });
+}
+
+/// Resolution choice for a sync conflict.
+enum ConflictResolution { keepLocal, keepRemote }
+
+/// Sync state enum for UI display.
+enum SyncState { idle, syncing, success, error }
+
 /// Handles synchronization with Supabase backend.
 class SyncService extends ChangeNotifier {
   late final Box<Task> _taskBox;
   late final Box<Ritual> _ritualBox;
   late final Box<Project> _projectBox;
+  late final Box<Tag> _tagBox;
   late final SupabaseClient _supabase;
   bool _isInitialized = false;
   final List<RealtimeChannel> _channels = [];
+  Timer? _periodicSyncTimer;
+
+  // Sync status
+  SyncState _syncState = SyncState.idle;
+  String? _syncError;
+  DateTime? _lastSyncedAt;
+  bool _isSyncEnabled = false;
+
+  // Conflict tracking
+  final List<SyncConflict> _pendingConflicts = [];
 
   bool get isInitialized => _isInitialized;
+  SyncState get syncState => _syncState;
+  String? get syncError => _syncError;
+  DateTime? get lastSyncedAt => _lastSyncedAt;
+  bool get isSyncEnabled => _isSyncEnabled;
+  bool get isAuthenticated =>
+      _isInitialized && _supabase.auth.currentUser != null;
+  String? get currentUserEmail =>
+      _isInitialized ? _supabase.auth.currentUser?.email : null;
+  List<SyncConflict> get pendingConflicts =>
+      List.unmodifiable(_pendingConflicts);
+  bool get hasConflicts => _pendingConflicts.isNotEmpty;
 
   Future<bool> initialize() async {
     try {
@@ -168,7 +241,38 @@ class SyncService extends ChangeNotifier {
       _taskBox = await Hive.openBox<Task>('tasks');
       _ritualBox = await Hive.openBox<Ritual>('rituals');
       _projectBox = await Hive.openBox<Project>('projects');
+      _tagBox = await Hive.openBox<Tag>('tags');
+
+      // Load sync preferences
+      final settingsBox = await Hive.openBox('settings');
+      _isSyncEnabled = settingsBox.get('sync_enabled', defaultValue: false);
+      final lastSynced = settingsBox.get('last_synced_at');
+      if (lastSynced != null) {
+        _lastSyncedAt = DateTime.tryParse(lastSynced);
+      }
+
+      // Listen to auth state changes
+      _supabase.auth.onAuthStateChange.listen((data) {
+        notifyListeners();
+        if (data.event == AuthChangeEvent.signedIn && _isSyncEnabled) {
+          syncAll();
+          setupRealtimeSync();
+          _startPeriodicSync();
+        } else if (data.event == AuthChangeEvent.signedOut) {
+          _cleanupChannels();
+          _stopPeriodicSync();
+        }
+      });
+
       _isInitialized = true;
+
+      // Auto-sync if enabled and authenticated
+      if (_isSyncEnabled && isAuthenticated) {
+        syncAll();
+        setupRealtimeSync();
+        _startPeriodicSync();
+      }
+
       return true;
     } catch (e, stackTrace) {
       developer.log(
@@ -179,6 +283,85 @@ class SyncService extends ChangeNotifier {
       );
       return false;
     }
+  }
+
+  // Auth methods
+  Future<String?> signIn(String email, String password) async {
+    try {
+      await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      notifyListeners();
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      return 'Sign in failed: $e';
+    }
+  }
+
+  Future<String?> signUp(String email, String password) async {
+    try {
+      await _supabase.auth.signUp(
+        email: email,
+        password: password,
+      );
+      notifyListeners();
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      return 'Sign up failed: $e';
+    }
+  }
+
+  Future<void> signOut() async {
+    _cleanupChannels();
+    _stopPeriodicSync();
+    await _supabase.auth.signOut();
+    _syncState = SyncState.idle;
+    _pendingConflicts.clear();
+    notifyListeners();
+  }
+
+  // Sync enable/disable
+  Future<void> setSyncEnabled(bool enabled) async {
+    _isSyncEnabled = enabled;
+    final settingsBox = Hive.box('settings');
+    await settingsBox.put('sync_enabled', enabled);
+
+    if (enabled && isAuthenticated) {
+      syncAll();
+      setupRealtimeSync();
+      _startPeriodicSync();
+    } else {
+      _cleanupChannels();
+      _stopPeriodicSync();
+    }
+    notifyListeners();
+  }
+
+  void _startPeriodicSync() {
+    _stopPeriodicSync();
+    _periodicSyncTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => syncAll(),
+    );
+  }
+
+  void _stopPeriodicSync() {
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = null;
+  }
+
+  Future<void> _updateLastSyncedAt() async {
+    _lastSyncedAt = DateTime.now();
+    final settingsBox = Hive.box('settings');
+    await settingsBox.put(
+      'last_synced_at',
+      _lastSyncedAt!.toIso8601String(),
+    );
   }
 
   /// Helper method to execute an operation with retry logic and timeout
@@ -330,7 +513,23 @@ class SyncService extends ChangeNotifier {
     for (final task in localTasks) {
       if (remoteMap.containsKey(task.id)) {
         final remoteTask = remoteMap[task.id]!;
-        if (remoteTask.modifiedAt.isAfter(task.modifiedAt)) {
+        final diff = remoteTask.modifiedAt
+            .difference(task.modifiedAt)
+            .abs();
+
+        // If both modified within 5 seconds, flag as conflict
+        if (diff.inSeconds < 5 &&
+            remoteTask.modifiedAt != task.modifiedAt) {
+          _pendingConflicts.add(SyncConflict(
+            entityType: 'task',
+            entityId: task.id,
+            entityTitle: task.title,
+            localModifiedAt: task.modifiedAt,
+            remoteModifiedAt: remoteTask.modifiedAt,
+            localData: task.toSyncMap(userId),
+            remoteData: remoteTask.toSyncMap(userId),
+          ));
+        } else if (remoteTask.modifiedAt.isAfter(task.modifiedAt)) {
           await _taskBox.put(task.id, remoteTask);
         } else if (task.modifiedAt.isAfter(remoteTask.modifiedAt)) {
           await _uploadTask(task, userId);
@@ -449,7 +648,22 @@ class SyncService extends ChangeNotifier {
     for (final project in localProjects) {
       if (remoteMap.containsKey(project.id)) {
         final remoteProject = remoteMap[project.id]!;
-        if (remoteProject.modifiedAt.isAfter(project.modifiedAt)) {
+        final diff = remoteProject.modifiedAt
+            .difference(project.modifiedAt)
+            .abs();
+
+        if (diff.inSeconds < 5 &&
+            remoteProject.modifiedAt != project.modifiedAt) {
+          _pendingConflicts.add(SyncConflict(
+            entityType: 'project',
+            entityId: project.id,
+            entityTitle: project.name,
+            localModifiedAt: project.modifiedAt,
+            remoteModifiedAt: remoteProject.modifiedAt,
+            localData: project.toSyncMap(userId),
+            remoteData: remoteProject.toSyncMap(userId),
+          ));
+        } else if (remoteProject.modifiedAt.isAfter(project.modifiedAt)) {
           await _projectBox.put(project.id, remoteProject);
         } else if (project.modifiedAt.isAfter(remoteProject.modifiedAt)) {
           await _uploadProject(project, userId);
@@ -586,19 +800,182 @@ class SyncService extends ChangeNotifier {
 
   // Full synchronization
   Future<bool> syncAll() async {
-    if (!_isInitialized) return false;
+    if (!_isInitialized || !isAuthenticated) return false;
+    if (_syncState == SyncState.syncing) return false;
 
-    final projectsResult = await syncProjects();
-    final tasksResult = await syncTasks();
-    final ritualsResult = await syncRituals();
+    _syncState = SyncState.syncing;
+    _syncError = null;
+    notifyListeners();
 
-    return projectsResult && tasksResult && ritualsResult;
+    try {
+      final projectsResult = await syncProjects();
+      final tasksResult = await syncTasks();
+      final ritualsResult = await syncRituals();
+      final tagsResult = await syncTags();
+
+      final success =
+          projectsResult && tasksResult && ritualsResult && tagsResult;
+
+      _syncState = success ? SyncState.success : SyncState.error;
+      if (success) {
+        await _updateLastSyncedAt();
+      } else {
+        _syncError = 'Some items failed to sync';
+      }
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _syncState = SyncState.error;
+      _syncError = e.toString();
+      notifyListeners();
+      return false;
+    }
   }
 
-  // Background sync
-  void setupPeriodicSync() {
-    // This would set up a timer or use work manager for periodic sync
-    // Implementation depends on platform requirements
+  // Tag synchronization
+  Future<bool> syncTags() async {
+    if (!_isInitialized) return false;
+
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      final localTags = _tagBox.values.toList();
+
+      final remoteTags = await _executeWithRetry<List<Tag>>(
+        operation: () async {
+          final response =
+              await _supabase.from('tags').select().eq('user_id', userId);
+
+          final tags = <Tag>[];
+          for (final data in response) {
+            try {
+              tags.add(TagParsing.fromMap(data));
+            } catch (e, stackTrace) {
+              developer.log(
+                'Failed to parse tag from remote data',
+                name: 'SyncService',
+                error: e,
+                stackTrace: stackTrace,
+              );
+            }
+          }
+          return tags;
+        },
+        operationName: 'Fetch remote tags',
+      );
+
+      if (remoteTags != null) {
+        await _mergeTags(localTags, remoteTags, userId);
+        return true;
+      }
+
+      return false;
+    } on SyncException catch (e) {
+      developer.log(
+        'Failed to sync tags: ${e.message}',
+        name: 'SyncService',
+        error: e.cause,
+      );
+      return false;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Unexpected error syncing tags',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<void> _mergeTags(
+    List<Tag> localTags,
+    List<Tag> remoteTags,
+    String userId,
+  ) async {
+    final localMap = {for (var t in localTags) t.id: t};
+    final remoteMap = {for (var t in remoteTags) t.id: t};
+
+    for (final tag in localTags) {
+      if (!remoteMap.containsKey(tag.id)) {
+        await _uploadTag(tag, userId);
+      }
+    }
+
+    for (final tag in remoteTags) {
+      if (!localMap.containsKey(tag.id)) {
+        await _tagBox.put(tag.id, tag);
+      }
+    }
+  }
+
+  Future<bool> _uploadTag(Tag tag, String userId) async {
+    try {
+      final data = tag.toSyncMap(userId);
+      await _executeWithRetry<void>(
+        operation: () async {
+          await _supabase.from('tags').upsert(data);
+        },
+        operationName: 'Upload tag ${tag.id}',
+      );
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to upload tag: ${tag.id}',
+        name: 'SyncService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  // Conflict resolution
+  Future<void> resolveConflict(
+    SyncConflict conflict,
+    ConflictResolution resolution,
+  ) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    if (resolution == ConflictResolution.keepLocal) {
+      // Upload local version to remote
+      switch (conflict.entityType) {
+        case 'task':
+          final task = _taskBox.get(conflict.entityId);
+          if (task != null) await _uploadTask(task, userId);
+        case 'project':
+          final project = _projectBox.get(conflict.entityId);
+          if (project != null) await _uploadProject(project, userId);
+        case 'ritual':
+          final ritual = _ritualBox.get(conflict.entityId);
+          if (ritual != null) await _uploadRitual(ritual, userId);
+      }
+    } else {
+      // Apply remote version locally
+      switch (conflict.entityType) {
+        case 'task':
+          final task = TaskParsing.fromMap(conflict.remoteData);
+          await _taskBox.put(task.id, task);
+        case 'project':
+          final project = ProjectParsing.fromMap(conflict.remoteData);
+          await _projectBox.put(project.id, project);
+        case 'ritual':
+          final ritual = RitualParsing.fromMap(conflict.remoteData);
+          await _ritualBox.put(ritual.id, ritual);
+      }
+    }
+
+    _pendingConflicts.remove(conflict);
+    notifyListeners();
+  }
+
+  Future<void> resolveAllConflicts(ConflictResolution resolution) async {
+    final conflicts = List<SyncConflict>.from(_pendingConflicts);
+    for (final conflict in conflicts) {
+      await resolveConflict(conflict, resolution);
+    }
   }
 
   // Real-time subscriptions
@@ -658,6 +1035,22 @@ class SyncService extends ChangeNotifier {
         },
       ).subscribe();
     _channels.add(ritualsChannel);
+
+    final tagsChannel = _supabase.channel('photisnadi_tags_sync')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'tags',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'user_id',
+          value: userId,
+        ),
+        callback: (payload) {
+          syncTags();
+        },
+      ).subscribe();
+    _channels.add(tagsChannel);
   }
 
   void _cleanupChannels() {
@@ -670,6 +1063,7 @@ class SyncService extends ChangeNotifier {
   @override
   void dispose() {
     _cleanupChannels();
+    _stopPeriodicSync();
     super.dispose();
   }
 }
