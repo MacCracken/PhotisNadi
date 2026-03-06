@@ -34,6 +34,11 @@ extension TaskParsing on Task {
           ? DateTime.parse(data['modified_at'] as String)
           : DateTime.parse(data['created_at'] as String),
       dependsOn: List<String>.from(data['depends_on'] ?? []),
+      subtasks: List<String>.from(data['subtasks'] ?? []),
+      estimatedMinutes: data['estimated_minutes'] as int?,
+      trackedMinutes: (data['tracked_minutes'] as int?) ?? 0,
+      recurrence: data['recurrence'] as String?,
+      attachments: List<String>.from(data['attachments'] ?? []),
     );
   }
 
@@ -52,6 +57,11 @@ extension TaskParsing on Task {
       'task_key': taskKey,
       'modified_at': modifiedAt.toIso8601String(),
       'depends_on': dependsOn,
+      'subtasks': subtasks,
+      'estimated_minutes': estimatedMinutes,
+      'tracked_minutes': trackedMinutes,
+      'recurrence': recurrence,
+      'attachments': attachments,
     };
   }
 }
@@ -71,6 +81,8 @@ extension ProjectParsing on Project {
       modifiedAt: data['modified_at'] != null
           ? DateTime.parse(data['modified_at'] as String)
           : DateTime.parse(data['created_at'] as String),
+      sharedWith: List<String>.from(data['shared_with'] ?? []),
+      ownerId: data['owner_id'] as String?,
     );
   }
 
@@ -87,6 +99,8 @@ extension ProjectParsing on Project {
       'task_counter': taskCounter,
       'is_archived': isArchived,
       'modified_at': modifiedAt.toIso8601String(),
+      'shared_with': sharedWith,
+      'owner_id': ownerId,
     };
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/task.dart';
 import '../../services/task_service.dart';
+import '../../services/theme_service.dart';
 import '../../common/utils.dart';
 import '../../common/constants.dart';
 
@@ -10,6 +12,7 @@ class TaskCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final bool isDragging;
+  final FocusNode? focusNode;
 
   const TaskCard({
     super.key,
@@ -17,70 +20,165 @@ class TaskCard extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.isDragging = false,
+    this.focusNode,
   });
 
   @override
   Widget build(BuildContext context) {
     final priorityColor = getPriorityColor(task.priority);
     final taskService = context.watch<TaskService>();
+    final themeService = context.watch<ThemeService>();
     final isBlocked = taskService.isTaskBlocked(task);
     final hasDependencies = task.dependsOn.isNotEmpty;
+    final compact = themeService.isCompact;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppConstants.cardMarginHorizontal,
-        vertical: AppConstants.cardMarginVertical,
-      ),
-      elevation:
-          isDragging ? AppConstants.elevationHigh : AppConstants.elevationLow,
-      shape: isBlocked
-          ? RoundedRectangleBorder(
+    final marginH = compact
+        ? AppConstants.cardMarginHorizontalCompact
+        : AppConstants.cardMarginHorizontal;
+    final marginV = compact
+        ? AppConstants.cardMarginVerticalCompact
+        : AppConstants.cardMarginVertical;
+    final padding = compact
+        ? AppConstants.cardPaddingCompact
+        : AppConstants.cardPadding;
+    final descMaxLines = compact
+        ? AppConstants.descriptionMaxLinesCompact
+        : AppConstants.descriptionMaxLines;
+    final titleMaxLines = compact
+        ? AppConstants.titleMaxLinesCompact
+        : AppConstants.titleMaxLines;
+
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.enter ||
+              event.logicalKey == LogicalKeyboardKey.space) {
+            onTap?.call();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Builder(
+        builder: (context) {
+          final isFocused = Focus.of(context).hasFocus;
+          return Card(
+            margin: EdgeInsets.symmetric(
+              horizontal: marginH,
+              vertical: marginV,
+            ),
+            elevation: isDragging
+                ? AppConstants.elevationHigh
+                : AppConstants.elevationLow,
+            shape: RoundedRectangleBorder(
               borderRadius:
                   BorderRadius.circular(AppConstants.cardBorderRadius),
-              side: BorderSide(color: Colors.red.shade300, width: 2),
-            )
-          : null,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.cardPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(task, priorityColor, isBlocked, hasDependencies),
-              const SizedBox(height: AppConstants.smallPadding),
-              Text(
-                task.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
+              side: isBlocked
+                  ? BorderSide(color: Colors.red.shade300, width: 2)
+                  : isFocused
+                      ? BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        )
+                      : BorderSide.none,
+            ),
+            child: InkWell(
+              onTap: onTap,
+              onLongPress: onLongPress,
+              borderRadius:
+                  BorderRadius.circular(AppConstants.cardBorderRadius),
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(
+                        task, priorityColor, isBlocked, hasDependencies),
+                    SizedBox(
+                        height: compact
+                            ? AppConstants.tinyPadding
+                            : AppConstants.smallPadding),
+                    Text(
+                      task.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: compact ? 13 : 14,
+                      ),
+                      maxLines: titleMaxLines,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (task.description != null) ...[
+                      const SizedBox(height: AppConstants.tinyPadding),
+                      Text(
+                        task.description!,
+                        style: TextStyle(
+                          fontSize: compact ? 11 : 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: descMaxLines,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (task.subtasks.isNotEmpty) ...[
+                      const SizedBox(height: AppConstants.tinyPadding),
+                      _buildSubtaskProgress(task, compact),
+                    ],
+                    if (task.trackedMinutes > 0 || task.estimatedMinutes != null) ...[
+                      const SizedBox(height: AppConstants.tinyPadding),
+                      _buildTimeIndicator(task, compact),
+                    ],
+                    if (task.recurrence != null) ...[
+                      const SizedBox(height: AppConstants.tinyPadding),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.repeat, size: compact ? 10 : 12, color: Colors.grey.shade500),
+                          const SizedBox(width: 3),
+                          Text(
+                            task.recurrence!,
+                            style: TextStyle(
+                              fontSize: compact ? 10 : 11,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (task.attachments.isNotEmpty) ...[
+                      const SizedBox(height: AppConstants.tinyPadding),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.attach_file, size: compact ? 10 : 12, color: Colors.grey.shade500),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${task.attachments.length}',
+                            style: TextStyle(
+                              fontSize: compact ? 10 : 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (task.tags.isNotEmpty && !compact) ...[
+                      const SizedBox(height: AppConstants.smallPadding),
+                      _buildTags(task.tags, taskService),
+                    ],
+                    if (task.dueDate != null) ...[
+                      SizedBox(
+                          height: compact
+                              ? AppConstants.tinyPadding
+                              : AppConstants.smallPadding),
+                      _buildDueDate(task.dueDate!),
+                    ],
+                  ],
                 ),
               ),
-              if (task.description != null) ...[
-                const SizedBox(height: AppConstants.tinyPadding),
-                Text(
-                  task.description!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                  maxLines: AppConstants.descriptionMaxLines,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              if (task.tags.isNotEmpty) ...[
-                const SizedBox(height: AppConstants.smallPadding),
-                _buildTags(task.tags, taskService),
-              ],
-              if (task.dueDate != null) ...[
-                const SizedBox(height: AppConstants.smallPadding),
-                _buildDueDate(task.dueDate!),
-              ],
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -150,7 +248,8 @@ class TaskCard extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: tagColor.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+            borderRadius:
+                BorderRadius.circular(AppConstants.borderRadiusSmall),
           ),
           child: Text(
             tagName,
@@ -163,6 +262,62 @@ class TaskCard extends StatelessWidget {
         );
       }).toList(),
     );
+  }
+
+  Widget _buildSubtaskProgress(Task task, bool compact) {
+    final done = task.subtasksDone;
+    final total = task.subtasks.length;
+    final progress = total > 0 ? done / total : 0.0;
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: compact ? 3 : 4,
+              backgroundColor: Colors.grey.shade200,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '$done/$total',
+          style: TextStyle(
+            fontSize: compact ? 10 : 11,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimeIndicator(Task task, bool compact) {
+    final hasEstimate = task.estimatedMinutes != null;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.timer_outlined, size: compact ? 10 : 12, color: Colors.grey.shade500),
+        const SizedBox(width: 3),
+        Text(
+          hasEstimate
+              ? '${task.formattedTrackedTime} / ${_formatMinutes(task.estimatedMinutes!)}'
+              : task.formattedTrackedTime,
+          style: TextStyle(
+            fontSize: compact ? 10 : 11,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatMinutes(int minutes) {
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h == 0) return '${m}m';
+    if (m == 0) return '${h}h';
+    return '${h}h ${m}m';
   }
 
   Widget _buildDueDate(DateTime dueDate) {

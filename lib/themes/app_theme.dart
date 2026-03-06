@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primaryIndigo = Color(0xFF4F46E5);
   static const Color softTeal = Color(0xFF14B8A6);
   static const Color accentOrange = Color(0xFFF97316);
   static const Color backgroundDark = Color(0xFF0F172A);
   static const Color surfaceLight = Color(0xFFF8FAFC);
   static const Color surfaceDark = Color(0xFF1E293B);
 
-  static ThemeData get vibrantTheme {
+  static ThemeData buildLightTheme(Color primary) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: const ColorScheme.light(
-        primary: primaryIndigo,
+      colorScheme: ColorScheme.light(
+        primary: primary,
         secondary: softTeal,
         tertiary: accentOrange,
         surface: surfaceLight,
@@ -42,7 +41,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryIndigo,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 4,
           shape: RoundedRectangleBorder(
@@ -64,18 +63,18 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryIndigo, width: 2),
+          borderSide: BorderSide(color: primary, width: 2),
         ),
       ),
     );
   }
 
-  static ThemeData get vibrantDarkTheme {
+  static ThemeData buildDarkTheme(Color primary) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: primaryIndigo,
+      colorScheme: ColorScheme.dark(
+        primary: primary,
         secondary: softTeal,
         tertiary: accentOrange,
         surface: surfaceDark,
@@ -104,7 +103,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryIndigo,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 4,
           shape: RoundedRectangleBorder(
@@ -126,7 +125,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryIndigo, width: 2),
+          borderSide: BorderSide(color: primary, width: 2),
         ),
       ),
     );

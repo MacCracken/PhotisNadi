@@ -29,13 +29,18 @@ class TaskAdapter extends TypeAdapter<Task> {
       taskKey: fields[9] as String?,
       modifiedAt: fields[10] as DateTime?,
       dependsOn: (fields[11] as List).cast<String>(),
+      subtasks: fields.containsKey(12) ? (fields[12] as List).cast<String>() : [],
+      estimatedMinutes: fields.containsKey(13) ? fields[13] as int? : null,
+      trackedMinutes: fields.containsKey(14) ? fields[14] as int? ?? 0 : 0,
+      recurrence: fields.containsKey(15) ? fields[15] as String? : null,
+      attachments: fields.containsKey(16) ? (fields[16] as List).cast<String>() : [],
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +64,17 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(10)
       ..write(obj.modifiedAt)
       ..writeByte(11)
-      ..write(obj.dependsOn);
+      ..write(obj.dependsOn)
+      ..writeByte(12)
+      ..write(obj.subtasks)
+      ..writeByte(13)
+      ..write(obj.estimatedMinutes)
+      ..writeByte(14)
+      ..write(obj.trackedMinutes)
+      ..writeByte(15)
+      ..write(obj.recurrence)
+      ..writeByte(16)
+      ..write(obj.attachments);
   }
 
   @override

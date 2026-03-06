@@ -28,13 +28,15 @@ class ProjectAdapter extends TypeAdapter<Project> {
       isArchived: fields[8] as bool,
       modifiedAt: fields[9] as DateTime?,
       columns: (fields[10] as List?)?.cast<BoardColumn>(),
+      sharedWith: fields.containsKey(11) ? (fields[11] as List).cast<String>() : [],
+      ownerId: fields.containsKey(12) ? fields[12] as String? : null,
     );
   }
 
   @override
   void write(BinaryWriter writer, Project obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +58,11 @@ class ProjectAdapter extends TypeAdapter<Project> {
       ..writeByte(9)
       ..write(obj.modifiedAt)
       ..writeByte(10)
-      ..write(obj.columns);
+      ..write(obj.columns)
+      ..writeByte(11)
+      ..write(obj.sharedWith)
+      ..writeByte(12)
+      ..write(obj.ownerId);
   }
 
   @override

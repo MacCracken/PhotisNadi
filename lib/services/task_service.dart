@@ -1,6 +1,5 @@
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
-import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../models/task.dart';
 import '../models/ritual.dart';
@@ -8,28 +7,37 @@ import '../models/project.dart';
 import '../models/board.dart';
 import '../models/tag.dart';
 import '../common/constants.dart';
+import '../repositories/task_repository.dart';
+import '../repositories/project_repository.dart';
+import '../repositories/ritual_repository.dart';
+import '../repositories/tag_repository.dart';
 
 /// Manages tasks, rituals, and projects with local storage using Hive.
 class TaskService extends ChangeNotifier {
-  late final Box<Task> _taskBox;
-  late final Box<Ritual> _ritualBox;
-  late final Box<Project> _projectBox;
-  late final Box<Tag> _tagBox;
-
-  List<Task> _tasks = [];
-  List<Ritual> _rituals = [];
-  List<Project> _projects = [];
-  List<Tag> _tags = [];
+  final TaskRepository _taskRepo;
+  final ProjectRepository _projectRepo;
+  final RitualRepository _ritualRepo;
+  final TagRepository _tagRepo;
 
   String? _selectedProjectId;
-
   bool _isLoading = true;
   String? _error;
 
-  List<Task> get tasks => List.unmodifiable(_tasks);
-  List<Ritual> get rituals => List.unmodifiable(_rituals);
-  List<Project> get projects => List.unmodifiable(_projects);
-  List<Tag> get tags => List.unmodifiable(_tags);
+  TaskService({
+    TaskRepository? taskRepo,
+    ProjectRepository? projectRepo,
+    RitualRepository? ritualRepo,
+    TagRepository? tagRepo,
+  })  : _taskRepo = taskRepo ?? TaskRepository(),
+        _projectRepo = projectRepo ?? ProjectRepository(),
+        _ritualRepo = ritualRepo ?? RitualRepository(),
+        _tagRepo = tagRepo ?? TagRepository();
+
+  // Getters that delegate to repositories
+  List<Task> get tasks => _taskRepo.all;
+  List<Ritual> get rituals => _ritualRepo.all;
+  List<Project> get projects => _projectRepo.all;
+  List<Tag> get tags => _tagRepo.all;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -38,11 +46,7 @@ class TaskService extends ChangeNotifier {
 
   Project? get selectedProject {
     if (_selectedProjectId == null) return null;
-    try {
-      return _projects.firstWhere((p) => p.id == _selectedProjectId);
-    } catch (_) {
-      return null;
-    }
+    return _projectRepo.get(_selectedProjectId!);
   }
 
   Future<void> init() async {
@@ -51,22 +55,21 @@ class TaskService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _taskBox = await Hive.openBox<Task>('tasks');
-      _ritualBox = await Hive.openBox<Ritual>('rituals');
-      _projectBox = await Hive.openBox<Project>('projects');
-      _tagBox = await Hive.openBox<Tag>('tags');
+      await _taskRepo.init();
+      await _ritualRepo.init();
+      await _projectRepo.init();
+      await _tagRepo.init();
 
-      _loadData();
-
-      if (_projects.isEmpty) {
+      if (_projectRepo.count == 0) {
         await _createDefaultProject();
       }
 
-      if (_selectedProjectId == null && _projects.isNotEmpty) {
-        _selectedProjectId = _projects.first.id;
+      if (_selectedProjectId == null && _projectRepo.count > 0) {
+        _selectedProjectId = _projectRepo.all.first.id;
       }
 
       await _checkRitualResets();
+      await processRecurringTasks();
       _isLoading = false;
       notifyListeners();
     } catch (e, stackTrace) {
@@ -83,32 +86,9 @@ class TaskService extends ChangeNotifier {
     }
   }
 
-  void _loadData() {
-    try {
-      _tasks = _taskBox.values.toList();
-      _rituals = _ritualBox.values.toList();
-      _projects = _projectBox.values.toList();
-      _tags = _tagBox.values.toList();
-      notifyListeners();
-    } catch (e, stackTrace) {
-      developer.log(
-        'Failed to load data from Hive',
-        name: 'TaskService',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      _tasks = [];
-      _rituals = [];
-      _projects = [];
-      _tags = [];
-      notifyListeners();
-    }
-  }
-
   Future<void> _createDefaultProject() async {
     try {
       const uuid = Uuid();
-
       final project = Project(
         id: uuid.v4(),
         name: 'My Project',
@@ -118,10 +98,8 @@ class TaskService extends ChangeNotifier {
         color: '#4A90E2',
       );
 
-      await _projectBox.put(project.id, project);
-      _projects.add(project);
+      await _projectRepo.put(project);
       _selectedProjectId = project.id;
-
       notifyListeners();
     } catch (e, stackTrace) {
       developer.log(
@@ -135,7 +113,7 @@ class TaskService extends ChangeNotifier {
 
   Future<void> _checkRitualResets() async {
     try {
-      for (final ritual in _rituals) {
+      for (final ritual in _ritualRepo.all) {
         ritual.resetIfNeeded();
       }
     } catch (e, stackTrace) {
@@ -153,13 +131,15 @@ class TaskService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Project selection
+  // ── Project Selection ──
+
   void selectProject(String? projectId) {
     _selectedProjectId = projectId;
     notifyListeners();
   }
 
-  // Project CRUD operations
+  // ── Project CRUD ──
+
   Future<Project?> addProject(
     String name,
     String key, {
@@ -179,8 +159,7 @@ class TaskService extends ChangeNotifier {
         iconName: iconName,
       );
 
-      await _projectBox.put(project.id, project);
-      _projects.add(project);
+      await _projectRepo.put(project);
       notifyListeners();
       return project;
     } catch (e, stackTrace) {
@@ -197,11 +176,7 @@ class TaskService extends ChangeNotifier {
   Future<bool> updateProject(Project project) async {
     try {
       project.modifiedAt = DateTime.now();
-      await _projectBox.put(project.id, project);
-      final index = _projects.indexWhere((p) => p.id == project.id);
-      if (index != -1) {
-        _projects[index] = project;
-      }
+      await _projectRepo.put(project);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -217,21 +192,12 @@ class TaskService extends ChangeNotifier {
 
   Future<bool> deleteProject(String projectId) async {
     try {
-      // Delete all tasks in this project
-      final projectTasks =
-          _tasks.where((t) => t.projectId == projectId).toList();
-      for (final task in projectTasks) {
-        await _taskBox.delete(task.id);
-      }
-      _tasks.removeWhere((t) => t.projectId == projectId);
+      await _taskRepo.deleteWhere((t) => t.projectId == projectId);
+      await _projectRepo.delete(projectId);
 
-      // Delete the project
-      await _projectBox.delete(projectId);
-      _projects.removeWhere((p) => p.id == projectId);
-
-      // If deleted project was selected, select another
       if (_selectedProjectId == projectId) {
-        _selectedProjectId = _projects.isNotEmpty ? _projects.first.id : null;
+        final remaining = _projectRepo.all;
+        _selectedProjectId = remaining.isNotEmpty ? remaining.first.id : null;
       }
 
       notifyListeners();
@@ -249,15 +215,14 @@ class TaskService extends ChangeNotifier {
 
   Future<bool> archiveProject(String projectId) async {
     try {
-      final project = _projects.firstWhere((p) => p.id == projectId);
+      final project = _projectRepo.get(projectId);
+      if (project == null) return false;
       project.isArchived = true;
       await project.save();
 
-      // If archived project was selected, select another active one
       if (_selectedProjectId == projectId) {
-        final activeProjects = _projects.where((p) => !p.isArchived).toList();
-        _selectedProjectId =
-            activeProjects.isNotEmpty ? activeProjects.first.id : null;
+        final active = _projectRepo.active;
+        _selectedProjectId = active.isNotEmpty ? active.first.id : null;
       }
 
       notifyListeners();
@@ -273,7 +238,36 @@ class TaskService extends ChangeNotifier {
     }
   }
 
-  // Task operations
+  // ── Project Sharing ──
+
+  Future<bool> shareProject(String projectId, String userId) async {
+    final project = _projectRepo.get(projectId);
+    if (project == null) return false;
+    if (project.sharedWith.contains(userId)) return true;
+    project.sharedWith = [...project.sharedWith, userId];
+    project.modifiedAt = DateTime.now();
+    await _projectRepo.put(project);
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> unshareProject(String projectId, String userId) async {
+    final project = _projectRepo.get(projectId);
+    if (project == null) return false;
+    project.sharedWith = project.sharedWith.where((id) => id != userId).toList();
+    project.modifiedAt = DateTime.now();
+    await _projectRepo.put(project);
+    notifyListeners();
+    return true;
+  }
+
+  List<String> getProjectSharedUsers(String projectId) {
+    final project = _projectRepo.get(projectId);
+    return project?.sharedWith ?? [];
+  }
+
+  // ── Task CRUD ──
+
   Future<Task?> addTask(
     String title, {
     String? description,
@@ -284,19 +278,14 @@ class TaskService extends ChangeNotifier {
   }) async {
     try {
       const uuid = Uuid();
-
-      // Use selected project if no projectId provided
       final targetProjectId = projectId ?? _selectedProjectId;
       String? taskKey;
 
-      // Generate task key if project exists
       if (targetProjectId != null) {
-        try {
-          final project = _projects.firstWhere((p) => p.id == targetProjectId);
+        final project = _projectRepo.get(targetProjectId);
+        if (project != null) {
           taskKey = project.generateNextTaskKey();
           await project.save();
-        } catch (_) {
-          // Project not found, proceed without key
         }
       }
 
@@ -312,8 +301,7 @@ class TaskService extends ChangeNotifier {
         dueDate: dueDate,
       );
 
-      await _taskBox.put(task.id, task);
-      _tasks.add(task);
+      await _taskRepo.put(task);
       notifyListeners();
       return task;
     } catch (e, stackTrace) {
@@ -330,11 +318,7 @@ class TaskService extends ChangeNotifier {
   Future<bool> updateTask(Task task) async {
     try {
       task.modifiedAt = DateTime.now();
-      await _taskBox.put(task.id, task);
-      final index = _tasks.indexWhere((t) => t.id == task.id);
-      if (index != -1) {
-        _tasks[index] = task;
-      }
+      await _taskRepo.put(task);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -350,9 +334,8 @@ class TaskService extends ChangeNotifier {
 
   Future<bool> deleteTask(String taskId) async {
     try {
-      await _taskBox.delete(taskId);
-      _tasks.removeWhere((task) => task.id == taskId);
-      _removeDependencyReferences(taskId);
+      await _taskRepo.delete(taskId);
+      _taskRepo.removeDependencyReferences(taskId);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -366,17 +349,12 @@ class TaskService extends ChangeNotifier {
     }
   }
 
-  void _removeDependencyReferences(String taskId) {
-    for (final task in _tasks) {
-      if (task.dependsOn.contains(taskId)) {
-        task.dependsOn = task.dependsOn.where((id) => id != taskId).toList();
-      }
-    }
-  }
+  // ── Task Dependencies ──
 
   bool addTaskDependency(String taskId, String dependsOnTaskId) {
     try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
+      final task = _taskRepo.get(taskId);
+      if (task == null) return false;
       if (taskId == dependsOnTaskId) return false;
       if (task.dependsOn.contains(dependsOnTaskId)) return false;
       if (_wouldCreateCircularDependency(taskId, dependsOnTaskId)) return false;
@@ -393,7 +371,8 @@ class TaskService extends ChangeNotifier {
 
   bool removeTaskDependency(String taskId, String dependsOnTaskId) {
     try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
+      final task = _taskRepo.get(taskId);
+      if (task == null) return false;
       task.dependsOn =
           task.dependsOn.where((id) => id != dependsOnTaskId).toList();
       task.modifiedAt = DateTime.now();
@@ -415,34 +394,32 @@ class TaskService extends ChangeNotifier {
       if (visited.contains(current)) continue;
       visited.add(current);
 
-      try {
-        final task = _tasks.firstWhere((t) => t.id == current);
+      final task = _taskRepo.get(current);
+      if (task != null) {
         toVisit.addAll(task.dependsOn);
-      } catch (_) {}
+      }
     }
     return false;
   }
 
   List<Task> getTaskDependencies(String taskId) {
-    try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
-      return _tasks.where((t) => task.dependsOn.contains(t.id)).toList();
-    } catch (_) {
-      return [];
-    }
+    final task = _taskRepo.get(taskId);
+    if (task == null) return [];
+    return task.dependsOn
+        .map((id) => _taskRepo.get(id))
+        .whereType<Task>()
+        .toList();
   }
 
   List<Task> getDependentTasks(String taskId) {
-    return _tasks.where((t) => t.dependsOn.contains(taskId)).toList();
+    return _taskRepo.where((t) => t.dependsOn.contains(taskId));
   }
 
   bool isTaskBlocked(Task task) {
     if (task.status == TaskStatus.done) return false;
     for (final depId in task.dependsOn) {
-      try {
-        final depTask = _tasks.firstWhere((t) => t.id == depId);
-        if (depTask.status != TaskStatus.done) return true;
-      } catch (_) {}
+      final depTask = _taskRepo.get(depId);
+      if (depTask != null && depTask.status != TaskStatus.done) return true;
     }
     return false;
   }
@@ -456,23 +433,23 @@ class TaskService extends ChangeNotifier {
 
   Future<bool> moveTaskToProject(String taskId, String? newProjectId) async {
     try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
+      final task = _taskRepo.get(taskId);
+      if (task == null) return false;
       task.projectId = newProjectId;
 
-      // Generate new task key for new project
       if (newProjectId != null) {
-        try {
-          final project = _projects.firstWhere((p) => p.id == newProjectId);
+        final project = _projectRepo.get(newProjectId);
+        if (project != null) {
           task.taskKey = project.generateNextTaskKey();
           await project.save();
-        } catch (_) {
+        } else {
           task.taskKey = null;
         }
       } else {
         task.taskKey = null;
       }
 
-      await task.save();
+      await _taskRepo.put(task);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -486,7 +463,166 @@ class TaskService extends ChangeNotifier {
     }
   }
 
-  // Ritual operations
+  // ── Subtask operations ──
+
+  Future<bool> addSubtask(String taskId, String title) async {
+    final task = _taskRepo.get(taskId);
+    if (task == null) return false;
+    task.addSubtask(title);
+    task.modifiedAt = DateTime.now();
+    await _taskRepo.put(task);
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> toggleSubtask(String taskId, int index) async {
+    final task = _taskRepo.get(taskId);
+    if (task == null) return false;
+    task.toggleSubtask(index);
+    task.modifiedAt = DateTime.now();
+    await _taskRepo.put(task);
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> removeSubtask(String taskId, int index) async {
+    final task = _taskRepo.get(taskId);
+    if (task == null) return false;
+    task.removeSubtask(index);
+    task.modifiedAt = DateTime.now();
+    await _taskRepo.put(task);
+    notifyListeners();
+    return true;
+  }
+
+  // ── Time tracking ──
+
+  Future<bool> logTime(String taskId, int minutes) async {
+    final task = _taskRepo.get(taskId);
+    if (task == null || minutes <= 0) return false;
+    task.trackedMinutes += minutes;
+    task.modifiedAt = DateTime.now();
+    await _taskRepo.put(task);
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> setEstimate(String taskId, int? minutes) async {
+    final task = _taskRepo.get(taskId);
+    if (task == null) return false;
+    task.estimatedMinutes = minutes;
+    task.modifiedAt = DateTime.now();
+    await _taskRepo.put(task);
+    notifyListeners();
+    return true;
+  }
+
+  // ── Attachments ──
+
+  Future<bool> addAttachment(String taskId, String filePath) async {
+    final task = _taskRepo.get(taskId);
+    if (task == null) return false;
+    task.attachments = [...task.attachments, filePath];
+    task.modifiedAt = DateTime.now();
+    await _taskRepo.put(task);
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> removeAttachment(String taskId, int index) async {
+    final task = _taskRepo.get(taskId);
+    if (task == null || index < 0 || index >= task.attachments.length) {
+      return false;
+    }
+    task.attachments = List.of(task.attachments)..removeAt(index);
+    task.modifiedAt = DateTime.now();
+    await _taskRepo.put(task);
+    notifyListeners();
+    return true;
+  }
+
+  // ── Recurrence ──
+
+  Future<bool> setRecurrence(String taskId, String? recurrence) async {
+    final task = _taskRepo.get(taskId);
+    if (task == null) return false;
+    if (recurrence != null &&
+        !['daily', 'weekly', 'monthly'].contains(recurrence)) {
+      return false;
+    }
+    task.recurrence = recurrence;
+    task.modifiedAt = DateTime.now();
+    await _taskRepo.put(task);
+    notifyListeners();
+    return true;
+  }
+
+  /// Check recurring tasks and create new instances if the completed one is due.
+  Future<void> processRecurringTasks() async {
+    final now = DateTime.now();
+    final recurringDone = _taskRepo.all
+        .where((t) => t.recurrence != null && t.status == TaskStatus.done)
+        .toList();
+
+    for (final task in recurringDone) {
+      DateTime? nextDue;
+      if (task.dueDate != null) {
+        switch (task.recurrence) {
+          case 'daily':
+            nextDue = task.dueDate!.add(const Duration(days: 1));
+          case 'weekly':
+            nextDue = task.dueDate!.add(const Duration(days: 7));
+          case 'monthly':
+            nextDue = DateTime(
+              task.dueDate!.year,
+              task.dueDate!.month + 1,
+              task.dueDate!.day,
+            );
+        }
+      }
+
+      // Only create next occurrence if it's due
+      if (nextDue != null && !nextDue.isAfter(now.add(const Duration(days: 1)))) {
+        const uuid = Uuid();
+        final newTask = Task(
+          id: uuid.v4(),
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          createdAt: now,
+          dueDate: nextDue,
+          projectId: task.projectId,
+          tags: List.of(task.tags),
+          recurrence: task.recurrence,
+          estimatedMinutes: task.estimatedMinutes,
+          subtasks: task.subtasks.map((s) {
+            // Reset all subtasks to incomplete
+            final title = s.length > 2 ? s.substring(2) : '';
+            return '0:$title';
+          }).toList(),
+        );
+
+        // Assign task key if in a project
+        if (task.projectId != null) {
+          final project = _projectRepo.get(task.projectId!);
+          if (project != null) {
+            newTask.taskKey = project.generateNextTaskKey();
+            await project.save();
+          }
+        }
+
+        await _taskRepo.put(newTask);
+
+        // Clear recurrence from the completed task so it doesn't trigger again
+        task.recurrence = null;
+        await _taskRepo.put(task);
+      }
+    }
+    notifyListeners();
+  }
+
+  // ── Ritual CRUD ──
+
   Future<Ritual?> addRitual(String title, {String? description}) async {
     try {
       const uuid = Uuid();
@@ -497,8 +633,7 @@ class TaskService extends ChangeNotifier {
         createdAt: DateTime.now(),
       );
 
-      await _ritualBox.put(ritual.id, ritual);
-      _rituals.add(ritual);
+      await _ritualRepo.put(ritual);
       notifyListeners();
       return ritual;
     } catch (e, stackTrace) {
@@ -530,7 +665,8 @@ class TaskService extends ChangeNotifier {
 
   Future<bool> toggleRitualCompletion(String ritualId) async {
     try {
-      final ritual = _rituals.firstWhere((r) => r.id == ritualId);
+      final ritual = _ritualRepo.get(ritualId);
+      if (ritual == null) return false;
       if (!ritual.isCompleted) {
         ritual.markCompleted();
       } else {
@@ -552,8 +688,7 @@ class TaskService extends ChangeNotifier {
 
   Future<bool> deleteRitual(String ritualId) async {
     try {
-      await _ritualBox.delete(ritualId);
-      _rituals.removeWhere((ritual) => ritual.id == ritualId);
+      await _ritualRepo.delete(ritualId);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -567,12 +702,10 @@ class TaskService extends ChangeNotifier {
     }
   }
 
-  // Task filtering methods
+  // ── Task Queries ──
+
   List<Task> getTasksForProject(String? projectId) {
-    if (projectId == null) {
-      return _tasks.where((task) => task.projectId == null).toList();
-    }
-    return _tasks.where((task) => task.projectId == projectId).toList();
+    return _taskRepo.getByProject(projectId);
   }
 
   List<Task> getTasksForSelectedProject() {
@@ -581,10 +714,8 @@ class TaskService extends ChangeNotifier {
 
   List<Task> getTasksForColumn(String columnId, {String? projectId}) {
     final project = projectId != null
-        ? _projects.firstWhere((p) => p.id == projectId,
-            orElse: () => _projects.first)
+        ? _projectRepo.get(projectId)
         : selectedProject;
-
     if (project == null) return [];
 
     final column = project.columns.firstWhere(
@@ -592,11 +723,9 @@ class TaskService extends ChangeNotifier {
       orElse: () => project.columns.first,
     );
 
-    final projectTasks = projectId != null
-        ? getTasksForProject(projectId)
-        : getTasksForSelectedProject();
-
-    return projectTasks.where((task) => task.status == column.status).toList();
+    return _taskRepo.getByProject(projectId ?? _selectedProjectId)
+        .where((task) => task.status == column.status)
+        .toList();
   }
 
   List<Task> _getTasksForColumnFiltered(String columnId, String projectId) {
@@ -606,7 +735,7 @@ class TaskService extends ChangeNotifier {
   }
 
   TaskStatus getColumnStatus(String columnId) {
-    for (final project in _projects) {
+    for (final project in _projectRepo.all) {
       for (final column in project.columns) {
         if (column.id == columnId) {
           return column.status;
@@ -649,102 +778,77 @@ class TaskService extends ChangeNotifier {
     return loadedCount < totalTasks;
   }
 
-  // Get active (non-archived) projects
-  List<Project> get activeProjects {
-    return _projects.where((p) => !p.isArchived).toList();
-  }
+  // ── Project Queries ──
 
-  // Get archived projects
-  List<Project> get archivedProjects {
-    return _projects.where((p) => p.isArchived).toList();
-  }
+  List<Project> get activeProjects => _projectRepo.active;
+  List<Project> get archivedProjects => _projectRepo.archived;
 
-  // Column management
+  // ── Column Management ──
+
   Future<bool> addColumn(String projectId, BoardColumn column) async {
     try {
-      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
-      if (projectIndex == -1) return false;
+      final project = _projectRepo.get(projectId);
+      if (project == null) return false;
 
-      final project = _projects[projectIndex];
       final updatedColumns = List<BoardColumn>.from(project.columns)
         ..add(column.copyWith(order: project.columns.length));
 
-      _projects[projectIndex] = project.copyWith(columns: updatedColumns);
-      await _projectBox.put(project.id, _projects[projectIndex]);
+      final updated = project.copyWith(columns: updatedColumns);
+      await _projectRepo.put(updated);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log(
-        'Failed to add column',
-        name: 'TaskService',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      developer.log('Failed to add column', name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
 
   Future<bool> updateColumn(String projectId, BoardColumn column) async {
     try {
-      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
-      if (projectIndex == -1) return false;
+      final project = _projectRepo.get(projectId);
+      if (project == null) return false;
 
-      final project = _projects[projectIndex];
       final updatedColumns = project.columns.map((c) {
         return c.id == column.id ? column : c;
       }).toList();
 
-      _projects[projectIndex] = project.copyWith(columns: updatedColumns);
-      await _projectBox.put(project.id, _projects[projectIndex]);
+      final updated = project.copyWith(columns: updatedColumns);
+      await _projectRepo.put(updated);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log(
-        'Failed to update column',
-        name: 'TaskService',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      developer.log('Failed to update column', name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
 
   Future<bool> deleteColumn(String projectId, String columnId) async {
     try {
-      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
-      if (projectIndex == -1) return false;
+      final project = _projectRepo.get(projectId);
+      if (project == null) return false;
 
-      final project = _projects[projectIndex];
       final updatedColumns =
           project.columns.where((c) => c.id != columnId).toList();
-
       for (var i = 0; i < updatedColumns.length; i++) {
         updatedColumns[i] = updatedColumns[i].copyWith(order: i);
       }
 
-      _projects[projectIndex] = project.copyWith(columns: updatedColumns);
-      await _projectBox.put(project.id, _projects[projectIndex]);
+      final updated = project.copyWith(columns: updatedColumns);
+      await _projectRepo.put(updated);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log(
-        'Failed to delete column',
-        name: 'TaskService',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      developer.log('Failed to delete column', name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
 
   Future<bool> reorderColumns(String projectId, List<String> columnIds) async {
     try {
-      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
-      if (projectIndex == -1) return false;
+      final project = _projectRepo.get(projectId);
+      if (project == null) return false;
 
-      final project = _projects[projectIndex];
       final columnMap = {for (var c in project.columns) c.id: c};
-
       final updatedColumns = <BoardColumn>[];
       for (var i = 0; i < columnIds.length; i++) {
         final column = columnMap[columnIds[i]];
@@ -753,20 +857,17 @@ class TaskService extends ChangeNotifier {
         }
       }
 
-      _projects[projectIndex] = project.copyWith(columns: updatedColumns);
-      await _projectBox.put(project.id, _projects[projectIndex]);
+      final updated = project.copyWith(columns: updatedColumns);
+      await _projectRepo.put(updated);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log(
-        'Failed to reorder columns',
-        name: 'TaskService',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      developer.log('Failed to reorder columns', name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
+
+  // ── Filtering & Sorting ──
 
   String _searchQuery = '';
   TaskStatus? _filterStatus;
@@ -854,7 +955,7 @@ class TaskService extends ChangeNotifier {
   }
 
   List<Task> getFilteredTasks(String projectId) {
-    var filtered = _tasks.where((task) => task.projectId == projectId).toList();
+    var filtered = _taskRepo.getByProject(projectId);
 
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((task) {
@@ -866,13 +967,11 @@ class TaskService extends ChangeNotifier {
     }
 
     if (_filterStatus != null) {
-      filtered =
-          filtered.where((task) => task.status == _filterStatus).toList();
+      filtered = filtered.where((task) => task.status == _filterStatus).toList();
     }
 
     if (_filterPriority != null) {
-      filtered =
-          filtered.where((task) => task.priority == _filterPriority).toList();
+      filtered = filtered.where((task) => task.priority == _filterPriority).toList();
     }
 
     if (_filterTags.isNotEmpty) {
@@ -900,7 +999,6 @@ class TaskService extends ChangeNotifier {
       switch (_sortBy) {
         case TaskSortBy.createdAt:
           comparison = a.createdAt.compareTo(b.createdAt);
-          break;
         case TaskSortBy.dueDate:
           if (a.dueDate == null && b.dueDate == null) {
             comparison = 0;
@@ -911,13 +1009,10 @@ class TaskService extends ChangeNotifier {
           } else {
             comparison = a.dueDate!.compareTo(b.dueDate!);
           }
-          break;
         case TaskSortBy.priority:
           comparison = a.priority.index.compareTo(b.priority.index);
-          break;
         case TaskSortBy.title:
           comparison = a.title.toLowerCase().compareTo(b.title.toLowerCase());
-          break;
       }
       return _sortAscending ? comparison : -comparison;
     });
@@ -927,35 +1022,25 @@ class TaskService extends ChangeNotifier {
 
   List<String> getAllTagsForProject(String projectId) {
     final tags = <String>{};
-    for (final task in _tasks.where((t) => t.projectId == projectId)) {
+    for (final task in _taskRepo.getByProject(projectId)) {
       tags.addAll(task.tags);
     }
     return tags.toList()..sort();
   }
 
-  // Tag operations
+  // ── Tag CRUD ──
+
   List<Tag> getTagsForProject(String projectId) {
-    return _tags.where((t) => t.projectId == projectId).toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    return _tagRepo.getByProject(projectId);
   }
 
   Tag? getTagByName(String name, String projectId) {
-    try {
-      return _tags.firstWhere(
-        (t) => t.name == name && t.projectId == projectId,
-      );
-    } catch (_) {
-      return null;
-    }
+    return _tagRepo.getByName(name, projectId);
   }
 
-  Future<Tag?> addTag(
-    String name,
-    String color,
-    String projectId,
-  ) async {
+  Future<Tag?> addTag(String name, String color, String projectId) async {
     try {
-      final existing = getTagByName(name, projectId);
+      final existing = _tagRepo.getByName(name, projectId);
       if (existing != null) return null;
 
       const uuid = Uuid();
@@ -966,8 +1051,7 @@ class TaskService extends ChangeNotifier {
         projectId: projectId,
       );
 
-      await _tagBox.put(tag.id, tag);
-      _tags.add(tag);
+      await _tagRepo.put(tag);
       notifyListeners();
       return tag;
     } catch (e, stackTrace) {
@@ -983,24 +1067,20 @@ class TaskService extends ChangeNotifier {
 
   Future<bool> updateTag(Tag tag) async {
     try {
-      await _tagBox.put(tag.id, tag);
-      final index = _tags.indexWhere((t) => t.id == tag.id);
-      if (index != -1) {
-        final oldName = _tags[index].name;
-        _tags[index] = tag;
+      final existing = _tagRepo.get(tag.id);
+      final oldName = existing?.name;
 
-        // Rename tag in all tasks if name changed
-        if (oldName != tag.name) {
-          for (final task in _tasks.where(
-            (t) => t.projectId == tag.projectId && t.tags.contains(oldName),
-          )) {
-            task.tags = task.tags
-                .map((t) => t == oldName ? tag.name : t)
-                .toList();
-            await _taskBox.put(task.id, task);
+      await _tagRepo.put(tag);
+
+      if (oldName != null && oldName != tag.name) {
+        for (final task in _taskRepo.getByProject(tag.projectId)) {
+          if (task.tags.contains(oldName)) {
+            task.tags = task.tags.map((t) => t == oldName ? tag.name : t).toList();
+            await _taskRepo.put(task);
           }
         }
       }
+
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -1016,21 +1096,18 @@ class TaskService extends ChangeNotifier {
 
   Future<bool> deleteTag(String tagId) async {
     try {
-      final tag = _tags.firstWhere((t) => t.id == tagId);
-      final tagName = tag.name;
-      final projectId = tag.projectId;
+      final tag = _tagRepo.get(tagId);
+      if (tag == null) return false;
 
-      // Remove tag from all tasks
-      for (final task in _tasks.where(
-        (t) => t.projectId == projectId && t.tags.contains(tagName),
-      )) {
-        task.tags = task.tags.where((t) => t != tagName).toList();
-        await _taskBox.put(task.id, task);
+      for (final task in _taskRepo.getByProject(tag.projectId)) {
+        if (task.tags.contains(tag.name)) {
+          task.tags = task.tags.where((t) => t != tag.name).toList();
+          await _taskRepo.put(task);
+        }
       }
 
-      await _tagBox.delete(tagId);
-      _tags.removeWhere((t) => t.id == tagId);
-      _filterTags.remove(tagName);
+      _filterTags.remove(tag.name);
+      await _tagRepo.delete(tagId);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -1044,7 +1121,6 @@ class TaskService extends ChangeNotifier {
     }
   }
 }
-
 
 enum TaskSortBy {
   createdAt,

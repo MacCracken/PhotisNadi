@@ -9,6 +9,7 @@ import 'package:photisnadi/models/tag.dart';
 import 'package:photisnadi/services/task_service.dart';
 import 'package:photisnadi/services/sync_service.dart';
 import 'package:photisnadi/services/yeoman_service.dart';
+import 'package:photisnadi/services/theme_service.dart';
 import 'package:photisnadi/common/utils.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -2038,6 +2039,389 @@ void main() {
 
       await yeomanService.syncTasks();
       expect(capturedAuthHeader, 'sk-my-key');
+    });
+  });
+
+  group('ThemeService Tests', () {
+    test('AccentColor enum has correct values', () {
+      expect(AccentColor.values.length, 8);
+      expect(AccentColor.indigo.label, 'Indigo');
+      expect(AccentColor.rose.label, 'Rose');
+      expect(AccentColor.emerald.label, 'Emerald');
+    });
+
+    test('default state is comfortable with indigo', () {
+      final service = ThemeService();
+      expect(service.accentColor, AccentColor.indigo);
+      expect(service.layoutDensity, LayoutDensity.comfortable);
+      expect(service.isCompact, false);
+      expect(service.isEReaderMode, false);
+      expect(service.isDarkMode, false);
+    });
+
+    test('LayoutDensity compact check works', () {
+      final service = ThemeService();
+      expect(service.isCompact, false);
+    });
+  });
+
+  // ── Subtask Tests ──
+
+  group('Subtask Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('should add subtask to task', () async {
+      await taskService.addTask('Parent Task');
+      final task = taskService.tasks.first;
+
+      await taskService.addSubtask(task.id, 'Subtask 1');
+      await taskService.addSubtask(task.id, 'Subtask 2');
+
+      final updated = taskService.tasks.first;
+      expect(updated.subtasks.length, 2);
+      expect(updated.parsedSubtasks[0].title, 'Subtask 1');
+      expect(updated.parsedSubtasks[0].done, false);
+    });
+
+    test('should toggle subtask completion', () async {
+      await taskService.addTask('Parent Task');
+      final task = taskService.tasks.first;
+
+      await taskService.addSubtask(task.id, 'Subtask 1');
+      await taskService.toggleSubtask(task.id, 0);
+
+      final updated = taskService.tasks.first;
+      expect(updated.parsedSubtasks[0].done, true);
+      expect(updated.subtasksDone, 1);
+
+      await taskService.toggleSubtask(task.id, 0);
+      final toggled = taskService.tasks.first;
+      expect(toggled.parsedSubtasks[0].done, false);
+    });
+
+    test('should remove subtask', () async {
+      await taskService.addTask('Parent Task');
+      final task = taskService.tasks.first;
+
+      await taskService.addSubtask(task.id, 'Sub A');
+      await taskService.addSubtask(task.id, 'Sub B');
+      await taskService.removeSubtask(task.id, 0);
+
+      final updated = taskService.tasks.first;
+      expect(updated.subtasks.length, 1);
+      expect(updated.parsedSubtasks[0].title, 'Sub B');
+    });
+
+    test('subtask progress counts correctly', () async {
+      await taskService.addTask('Parent Task');
+      final task = taskService.tasks.first;
+
+      await taskService.addSubtask(task.id, 'A');
+      await taskService.addSubtask(task.id, 'B');
+      await taskService.addSubtask(task.id, 'C');
+      await taskService.toggleSubtask(task.id, 0);
+      await taskService.toggleSubtask(task.id, 2);
+
+      final updated = taskService.tasks.first;
+      expect(updated.subtasksDone, 2);
+      expect(updated.subtasks.length, 3);
+    });
+  });
+
+  // ── Time Tracking Tests ──
+
+  group('Time Tracking Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('should log time to task', () async {
+      await taskService.addTask('Tracked Task');
+      final task = taskService.tasks.first;
+
+      await taskService.logTime(task.id, 30);
+      expect(taskService.tasks.first.trackedMinutes, 30);
+
+      await taskService.logTime(task.id, 15);
+      expect(taskService.tasks.first.trackedMinutes, 45);
+    });
+
+    test('should reject zero or negative minutes', () async {
+      await taskService.addTask('Task');
+      final task = taskService.tasks.first;
+
+      expect(await taskService.logTime(task.id, 0), false);
+      expect(await taskService.logTime(task.id, -5), false);
+      expect(taskService.tasks.first.trackedMinutes, 0);
+    });
+
+    test('should set estimate', () async {
+      await taskService.addTask('Task');
+      final task = taskService.tasks.first;
+
+      await taskService.setEstimate(task.id, 120);
+      expect(taskService.tasks.first.estimatedMinutes, 120);
+
+      await taskService.setEstimate(task.id, null);
+      expect(taskService.tasks.first.estimatedMinutes, null);
+    });
+
+    test('formattedTrackedTime formats correctly', () {
+      final now = DateTime.now();
+      final task = Task(
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        title: 'Test',
+        createdAt: now,
+        trackedMinutes: 0,
+      );
+      expect(task.formattedTrackedTime, '0m');
+
+      task.trackedMinutes = 45;
+      expect(task.formattedTrackedTime, '45m');
+
+      task.trackedMinutes = 60;
+      expect(task.formattedTrackedTime, '1h');
+
+      task.trackedMinutes = 90;
+      expect(task.formattedTrackedTime, '1h 30m');
+    });
+  });
+
+  // ── Recurrence Tests ──
+
+  group('Recurrence Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('should set recurrence on task', () async {
+      await taskService.addTask('Recurring');
+      final task = taskService.tasks.first;
+
+      await taskService.setRecurrence(task.id, 'daily');
+      expect(taskService.tasks.first.recurrence, 'daily');
+
+      await taskService.setRecurrence(task.id, null);
+      expect(taskService.tasks.first.recurrence, null);
+    });
+
+    test('should reject invalid recurrence values', () async {
+      await taskService.addTask('Task');
+      final task = taskService.tasks.first;
+
+      expect(await taskService.setRecurrence(task.id, 'hourly'), false);
+      expect(taskService.tasks.first.recurrence, null);
+    });
+
+    test('processRecurringTasks creates new task when done recurring is due',
+        () async {
+      final project = await taskService.addProject('Proj', 'PR');
+      await taskService.addTask(
+        'Daily Standup',
+        projectId: project!.id,
+        dueDate: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      final task = taskService.getTasksForProject(project.id).first;
+      await taskService.setRecurrence(task.id, 'daily');
+
+      // Mark as done
+      task.status = TaskStatus.done;
+      await taskService.updateTask(task);
+
+      await taskService.processRecurringTasks();
+
+      final tasks = taskService.getTasksForProject(project.id);
+      expect(tasks.length, 2);
+
+      // The new task should be todo with the recurrence
+      final newTask = tasks.firstWhere((t) => t.status == TaskStatus.todo);
+      expect(newTask.title, 'Daily Standup');
+      expect(newTask.recurrence, 'daily');
+
+      // The old completed task should have recurrence cleared
+      final oldTask = tasks.firstWhere((t) => t.status == TaskStatus.done);
+      expect(oldTask.recurrence, null);
+    });
+  });
+
+  // ── Attachment Tests ──
+
+  group('Attachment Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('should add attachment to task', () async {
+      await taskService.addTask('Task With Files');
+      final task = taskService.tasks.first;
+
+      await taskService.addAttachment(task.id, '/tmp/doc.pdf');
+      await taskService.addAttachment(task.id, '/tmp/image.png');
+
+      final updated = taskService.tasks.first;
+      expect(updated.attachments.length, 2);
+      expect(updated.attachments[0], '/tmp/doc.pdf');
+    });
+
+    test('should remove attachment by index', () async {
+      await taskService.addTask('Task');
+      final task = taskService.tasks.first;
+
+      await taskService.addAttachment(task.id, '/tmp/a.txt');
+      await taskService.addAttachment(task.id, '/tmp/b.txt');
+      await taskService.removeAttachment(task.id, 0);
+
+      final updated = taskService.tasks.first;
+      expect(updated.attachments.length, 1);
+      expect(updated.attachments[0], '/tmp/b.txt');
+    });
+
+    test('removeAttachment rejects invalid index', () async {
+      await taskService.addTask('Task');
+      final task = taskService.tasks.first;
+
+      expect(await taskService.removeAttachment(task.id, 0), false);
+      expect(await taskService.removeAttachment(task.id, -1), false);
+    });
+  });
+
+  // ── Project Sharing Tests ──
+
+  group('Project Sharing Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('should share project with user', () async {
+      final project = await taskService.addProject('Shared', 'SH');
+      expect(project, isNotNull);
+
+      await taskService.shareProject(project!.id, 'user-abc');
+      expect(taskService.getProjectSharedUsers(project.id), ['user-abc']);
+    });
+
+    test('should not duplicate shared user', () async {
+      final project = await taskService.addProject('Shared', 'SH');
+
+      await taskService.shareProject(project!.id, 'user-abc');
+      await taskService.shareProject(project.id, 'user-abc');
+      expect(taskService.getProjectSharedUsers(project.id).length, 1);
+    });
+
+    test('should unshare project', () async {
+      final project = await taskService.addProject('Shared', 'SH');
+
+      await taskService.shareProject(project!.id, 'user-abc');
+      await taskService.shareProject(project.id, 'user-def');
+      await taskService.unshareProject(project.id, 'user-abc');
+
+      expect(taskService.getProjectSharedUsers(project.id), ['user-def']);
+    });
+  });
+
+  // ── Sync Serialization with new fields ──
+
+  group('Extended Sync Serialization Tests', () {
+    test('Task toSyncMap includes subtasks and time tracking', () {
+      final now = DateTime.now();
+      final task = Task(
+        id: '550e8400-e29b-41d4-a716-446655440002',
+        title: 'Full Task',
+        createdAt: now,
+        subtasks: ['0:Design', '1:Code'],
+        estimatedMinutes: 120,
+        trackedMinutes: 45,
+        recurrence: 'weekly',
+      );
+
+      final map = task.toSyncMap('user1');
+      expect(map['subtasks'], ['0:Design', '1:Code']);
+      expect(map['estimated_minutes'], 120);
+      expect(map['tracked_minutes'], 45);
+      expect(map['recurrence'], 'weekly');
+    });
+
+    test('Task fromMap handles new fields', () {
+      final data = {
+        'id': '550e8400-e29b-41d4-a716-446655440003',
+        'title': 'From Map',
+        'created_at': DateTime.now().toIso8601String(),
+        'status': 'todo',
+        'priority': 'medium',
+        'subtasks': ['0:Item1', '1:Item2'],
+        'estimated_minutes': 60,
+        'tracked_minutes': 30,
+        'recurrence': 'daily',
+      };
+
+      final task = TaskParsing.fromMap(data);
+      expect(task.subtasks.length, 2);
+      expect(task.estimatedMinutes, 60);
+      expect(task.trackedMinutes, 30);
+      expect(task.recurrence, 'daily');
+    });
+
+    test('Task fromMap handles missing new fields gracefully', () {
+      final data = {
+        'id': '550e8400-e29b-41d4-a716-446655440004',
+        'title': 'Old Task',
+        'created_at': DateTime.now().toIso8601String(),
+        'status': 'todo',
+        'priority': 'low',
+      };
+
+      final task = TaskParsing.fromMap(data);
+      expect(task.subtasks, isEmpty);
+      expect(task.estimatedMinutes, null);
+      expect(task.trackedMinutes, 0);
+      expect(task.recurrence, null);
     });
   });
 }

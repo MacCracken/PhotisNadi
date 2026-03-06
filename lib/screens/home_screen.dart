@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isRitualsCollapsed = false;
   int _selectedNavIndex = 1;
   final FocusNode _searchFocusNode = FocusNode();
+  final GlobalKey<KanbanBoardState> _kanbanKey = GlobalKey<KanbanBoardState>();
 
   @override
   void initState() {
@@ -190,6 +191,10 @@ class _HomeScreenState extends State<HomeScreen> {
       onEscape: () {
         FocusScope.of(context).unfocus();
       },
+      onNextTask: () => _kanbanKey.currentState?.navigateNextTask(),
+      onPrevTask: () => _kanbanKey.currentState?.navigatePrevTask(),
+      onNextColumn: () => _kanbanKey.currentState?.navigateNextColumn(),
+      onPrevColumn: () => _kanbanKey.currentState?.navigatePrevColumn(),
       child: Builder(
         builder: (context) => Selector<TaskService, bool>(
           selector: (_, service) => service.isLoading,
@@ -356,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _selectedNavIndex,
         children: [
           ProjectSidebar(isCollapsed: false, onToggleCollapse: () {}),
-          const KanbanBoard(),
+          KanbanBoard(key: _kanbanKey),
           RitualsSidebar(isCollapsed: false, onToggleCollapse: () {}),
         ],
       ),

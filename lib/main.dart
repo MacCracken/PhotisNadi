@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -11,12 +11,12 @@ import 'models/ritual.dart';
 import 'models/tag.dart';
 import 'models/task.dart';
 import 'screens/home_screen.dart';
-import 'services/desktop_integration.dart';
 import 'services/notification_service.dart';
 import 'services/sync_service.dart';
 import 'services/task_service.dart';
 import 'services/theme_service.dart';
 import 'services/yeoman_service.dart';
+import 'common/platform_utils.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +42,6 @@ void main() async {
     await Hive.openBox('settings');
   } on Exception catch (e) {
     debugPrint('Failed to open Hive boxes: $e');
-    // Continue without boxes - app will work with empty data
   }
 
   // Initialize Supabase (optional — sync works only when configured)
@@ -61,10 +60,9 @@ void main() async {
     );
   }
 
-  // Initialize desktop integration
-  if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-    await DesktopIntegration.initializeWindowManager();
-    await DesktopIntegration.setupSystemTray();
+  // Initialize desktop integration (not on web)
+  if (!kIsWeb && isDesktop()) {
+    await initDesktop();
   }
 
   runApp(PhotisNadiApp(
@@ -85,7 +83,9 @@ class PhotisNadiApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeService()),
         ChangeNotifierProvider(create: (_) {
           final notificationService = NotificationService();
-          notificationService.initialize();
+          if (!kIsWeb) {
+            notificationService.initialize();
+          }
           return notificationService;
         }),
         ChangeNotifierProvider(create: (_) {
@@ -103,11 +103,12 @@ class PhotisNadiApp extends StatelessWidget {
       ],
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {
+          final primary = themeService.accentColor.color;
           return MaterialApp(
             title: 'Photis Nadi',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.vibrantTheme,
-            darkTheme: AppTheme.vibrantDarkTheme,
+            theme: AppTheme.buildLightTheme(primary),
+            darkTheme: AppTheme.buildDarkTheme(primary),
             themeMode:
                 themeService.isEReaderMode ? ThemeMode.light : ThemeMode.system,
             localizationsDelegates: const [

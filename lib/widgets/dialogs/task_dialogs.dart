@@ -1,5 +1,9 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import '../../common/platform_utils.dart';
 import '../../models/tag.dart';
 import '../../models/task.dart';
 import '../../services/task_service.dart';
@@ -38,8 +42,11 @@ void showAddTaskDialog(BuildContext context, {String? columnId}) {
                 const SizedBox(height: 8),
                 TextField(
                   controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'Supports Markdown',
+                  ),
+                  maxLines: 5,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<TaskPriority>(
@@ -143,63 +150,141 @@ void showAddTaskDialog(BuildContext context, {String? columnId}) {
 void showTaskDetails(BuildContext context, Task task) {
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Row(
-        children: [
-          if (task.taskKey != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                task.taskKey!,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) {
+        final taskService = context.read<TaskService>();
+        final subtasks = task.parsedSubtasks;
+
+        return AlertDialog(
+          title: Row(
+            children: [
+              if (task.taskKey != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    task.taskKey!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(child: Text(task.title)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (task.description != null) ...[
+                  MarkdownBody(
+                    data: task.description!,
+                    selectable: true,
+                    shrinkWrap: true,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                _buildDetailRow('Priority', formatPriority(task.priority)),
+                _buildDetailRow('Status', formatStatus(task.status)),
+                if (task.dueDate != null)
+                  _buildDetailRow('Due', formatDate(task.dueDate!)),
+                if (task.recurrence != null)
+                  _buildDetailRow('Recurs', task.recurrence!),
+                if (task.estimatedMinutes != null || task.trackedMinutes > 0)
+                  _buildDetailRow(
+                    'Time',
+                    task.estimatedMinutes != null
+                        ? '${task.formattedTrackedTime} / ${_formatMin(task.estimatedMinutes!)}'
+                        : task.formattedTrackedTime,
+                  ),
+                _buildDetailRow('Created', formatDate(task.createdAt)),
+                if (subtasks.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Subtasks (${task.subtasksDone}/${subtasks.length})',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  ...List.generate(subtasks.length, (i) {
+                    final st = subtasks[i];
+                    return CheckboxListTile(
+                      value: st.done,
+                      title: Text(
+                        st.title,
+                        style: TextStyle(
+                          decoration:
+                              st.done ? TextDecoration.lineThrough : null,
+                          color: st.done ? Colors.grey : null,
+                        ),
+                      ),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (_) async {
+                        await taskService.toggleSubtask(task.id, i);
+                        setDialogState(() {});
+                      },
+                    );
+                  }),
+                ],
+                if (task.attachments.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Attachments (${task.attachments.length})',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  ...task.attachments.map((path) => ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading:
+                            const Icon(Icons.insert_drive_file, size: 18),
+                        title: Text(
+                          p.basename(path),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        onTap: () => openFile(path),
+                      )),
+                ],
+              ],
             ),
-            const SizedBox(width: 8),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                showEditTaskDialog(context, task);
+              },
+              child: const Text('Edit'),
+            ),
           ],
-          Expanded(child: Text(task.title)),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (task.description != null) ...[
-            Text(task.description!),
-            const SizedBox(height: 16),
-          ],
-          _buildDetailRow('Priority', formatPriority(task.priority)),
-          _buildDetailRow('Status', formatStatus(task.status)),
-          if (task.dueDate != null)
-            _buildDetailRow('Due', formatDate(task.dueDate!)),
-          _buildDetailRow('Created', formatDate(task.createdAt)),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            showEditTaskDialog(context, task);
-          },
-          child: const Text('Edit'),
-        ),
-      ],
+        );
+      },
     ),
   );
+}
+
+String _formatMin(int minutes) {
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  if (h == 0) return '${m}m';
+  if (m == 0) return '${h}h';
+  return '${h}h ${m}m';
 }
 
 Widget _buildDetailRow(String label, String value) {
@@ -229,9 +314,14 @@ void showEditTaskDialog(BuildContext context, Task task) {
       TextEditingController(text: task.title);
   final TextEditingController descController =
       TextEditingController(text: task.description ?? '');
+  final TextEditingController subtaskController = TextEditingController();
+  final TextEditingController estimateController =
+      TextEditingController(text: task.estimatedMinutes?.toString() ?? '');
+  final TextEditingController logTimeController = TextEditingController();
   TaskPriority selectedPriority = task.priority;
   TaskStatus selectedStatus = task.status;
   DateTime? selectedDueDate = task.dueDate;
+  String? selectedRecurrence = task.recurrence;
   final selectedTags = Set<String>.from(task.tags);
   final taskService = context.read<TaskService>();
   final projectTasks = taskService
@@ -262,8 +352,11 @@ void showEditTaskDialog(BuildContext context, Task task) {
                 const SizedBox(height: 8),
                 TextField(
                   controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'Supports Markdown',
+                  ),
+                  maxLines: 5,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<TaskPriority>(
@@ -416,6 +509,175 @@ void showEditTaskDialog(BuildContext context, Task task) {
                   ),
                 ),
               ],
+              // ── Subtasks ──
+              const SizedBox(height: 16),
+              const Text(
+                'Subtasks',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              ...List.generate(task.subtasks.length, (i) {
+                final st = task.parsedSubtasks[i];
+                return Row(
+                  children: [
+                    Checkbox(
+                      value: st.done,
+                      onChanged: (_) async {
+                        await taskService.toggleSubtask(task.id, i);
+                        setDialogState(() {});
+                      },
+                    ),
+                    Expanded(
+                      child: Text(
+                        st.title,
+                        style: TextStyle(
+                          decoration: st.done ? TextDecoration.lineThrough : null,
+                          color: st.done ? Colors.grey : null,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      onPressed: () async {
+                        await taskService.removeSubtask(task.id, i);
+                        setDialogState(() {});
+                      },
+                    ),
+                  ],
+                );
+              }),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: subtaskController,
+                      decoration: const InputDecoration(
+                        hintText: 'Add subtask',
+                        isDense: true,
+                      ),
+                      onSubmitted: (value) async {
+                        if (value.trim().isNotEmpty) {
+                          await taskService.addSubtask(task.id, value.trim());
+                          subtaskController.clear();
+                          setDialogState(() {});
+                        }
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add, size: 20),
+                    onPressed: () async {
+                      if (subtaskController.text.trim().isNotEmpty) {
+                        await taskService.addSubtask(
+                            task.id, subtaskController.text.trim());
+                        subtaskController.clear();
+                        setDialogState(() {});
+                      }
+                    },
+                  ),
+                ],
+              ),
+              // ── Time Tracking ──
+              const SizedBox(height: 16),
+              const Text(
+                'Time Tracking',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: estimateController,
+                      decoration: const InputDecoration(
+                        labelText: 'Estimate (minutes)',
+                        isDense: true,
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: logTimeController,
+                      decoration: InputDecoration(
+                        labelText: 'Log time (min)',
+                        isDense: true,
+                        hintText: 'Tracked: ${task.formattedTrackedTime}',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              // ── Recurrence ──
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                initialValue: selectedRecurrence,
+                decoration: const InputDecoration(
+                  labelText: 'Recurrence',
+                  isDense: true,
+                ),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('None')),
+                  DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                  DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                  DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                ],
+                onChanged: (value) {
+                  setDialogState(() => selectedRecurrence = value);
+                },
+              ),
+              // ── Attachments ──
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text(
+                    'Attachments',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    icon: const Icon(Icons.attach_file, size: 16),
+                    label: const Text('Add'),
+                    onPressed: () async {
+                      final result = await FilePicker.platform.pickFiles();
+                      if (result != null && result.files.single.path != null) {
+                        await taskService.addAttachment(
+                          task.id,
+                          result.files.single.path!,
+                        );
+                        setDialogState(() {});
+                      }
+                    },
+                  ),
+                ],
+              ),
+              if (task.attachments.isNotEmpty)
+                ...List.generate(task.attachments.length, (i) {
+                  final path = task.attachments[i];
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.insert_drive_file, size: 18),
+                    title: Text(
+                      p.basename(path),
+                      style: const TextStyle(fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      onPressed: () async {
+                        await taskService.removeAttachment(task.id, i);
+                        setDialogState(() {});
+                      },
+                    ),
+                    onTap: () {
+                      // Open file with system default
+                      openFile(path);
+                    },
+                  );
+                }),
             ],
           ),
         ),
@@ -434,6 +696,15 @@ void showEditTaskDialog(BuildContext context, Task task) {
                 task.status = selectedStatus;
                 task.dueDate = selectedDueDate;
                 task.tags = selectedTags.toList();
+                task.recurrence = selectedRecurrence;
+                // Update estimate
+                final est = int.tryParse(estimateController.text);
+                task.estimatedMinutes = est != null && est > 0 ? est : null;
+                // Log additional time
+                final logMin = int.tryParse(logTimeController.text);
+                if (logMin != null && logMin > 0) {
+                  task.trackedMinutes += logMin;
+                }
                 context.read<TaskService>().updateTask(task);
                 Navigator.pop(context);
               }

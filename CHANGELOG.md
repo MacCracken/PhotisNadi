@@ -20,7 +20,55 @@ All notable changes to Photis Nadi will be documented in this file.
     - `photis_task_analytics` — productivity insights and status breakdowns
   - Ritual analytics: completion rates, streak tracking, frequency breakdowns
 - New dependency: `http` ^1.2.0
-- 18 new YeomanService unit tests (115 total)
+- Theme Customization:
+  - 8 accent color presets: Indigo, Teal, Rose, Amber, Emerald, Violet, Sky, Orange
+  - Color picker dialog with visual selection
+  - Compact/comfortable layout density toggle
+  - Compact mode: smaller cards, tighter spacing, reduced text lines, hidden tags
+  - Theme builder refactored to accept dynamic primary color
+- Keyboard Navigation:
+  - Vim-style task navigation: J (next task), K (prev task), H (prev column), L (next column)
+  - Enter/Space to open focused task details
+  - Focus indicators on task cards (primary color border)
+  - Focus nodes managed per-task for efficient keyboard traversal
+- Repository pattern for data access:
+  - `HiveRepository<T>` generic base with Map-based index for O(1) lookups
+  - `TaskRepository` with secondary project index for efficient project-scoped queries
+  - `ProjectRepository`, `RitualRepository`, `TagRepository` specialized repositories
+  - Constructor injection for dependency injection and testability
+- Markdown support in task descriptions:
+  - `flutter_markdown` rendering in task detail dialog
+  - Description fields hint at markdown support, expanded to 5 lines
+- Subtasks/checklists:
+  - Add, toggle, remove subtasks on any task
+  - Progress bar indicator on task cards (done/total)
+  - Interactive checklist in task detail dialog with strikethrough
+  - Encoded storage (`0:title` / `1:title`) for Hive compatibility
+- Time tracking:
+  - Estimate (minutes) and logged time per task
+  - Time indicator on task cards with formatted display (e.g., "1h 30m / 2h")
+  - Log time and set estimate in edit dialog
+- Recurring tasks:
+  - Daily, weekly, monthly recurrence options
+  - Auto-creation of next occurrence when recurring task is completed
+  - Subtasks reset to incomplete in new occurrence
+  - Recurrence indicator on task cards
+  - Processed on app init
+- File attachments:
+  - `file_picker` integration for adding files to tasks
+  - Attachment list in edit and detail dialogs
+  - System-default file opening (cross-platform)
+  - Attachment count indicator on task cards
+- Team sharing (multi-user):
+  - `sharedWith` and `ownerId` fields on Project model
+  - Share/unshare project methods in TaskService
+  - Sync-ready: shared_with and owner_id in sync serialization
+- Web platform support:
+  - Flutter web target added (`web/` directory)
+  - Platform guards for desktop-only features (window manager, system tray, notifications)
+  - `platform_utils.dart` for cross-platform file opening
+- New dependencies: `flutter_markdown`, `file_picker`
+- 20 new unit tests (138 total)
 - Tags system:
   - Tag model with color support
   - Create/edit/delete tags with tag management UI (`lib/widgets/dialogs/tag_dialogs.dart`)
@@ -45,11 +93,26 @@ All notable changes to Photis Nadi will be documented in this file.
 - Task creation accepts `dueDate` parameter
 - Search/filter bar supports tag-based filtering
 - SecureYeoman integration paths documented in roadmap
+- TaskService refactored from direct Hive box access to repository pattern
+- All O(n) list scans replaced with O(1) indexed lookups
+- Task model extended with subtasks, estimatedMinutes, trackedMinutes, recurrence, attachments fields
+- Project model extended with sharedWith and ownerId fields
+- Task Hive adapter updated (fields 12-16), Project adapter updated (fields 11-12)
+- Sync serialization updated for all new task and project fields
+- `main.dart` refactored with `kIsWeb` guards for web compatibility
+- Description fields expanded to 5 lines with markdown hint
+- Project-scoped queries use secondary index instead of filtering all tasks
 
 ### New Files
+- `lib/repositories/hive_repository.dart` — Generic base repository with indexed lookups
+- `lib/repositories/task_repository.dart` — Task repository with project secondary index
+- `lib/repositories/project_repository.dart` — Project repository
+- `lib/repositories/ritual_repository.dart` — Ritual repository
+- `lib/repositories/tag_repository.dart` — Tag repository with project index and name lookup
 - `lib/services/yeoman_service.dart` — SecureYeoman integration service
 - `tools/mcp-server/index.js` — MCP stdio server for task CRUD via Supabase
 - `tools/mcp-server/package.json` — MCP server dependencies
+- `lib/common/platform_utils.dart` — Cross-platform helpers (desktop detection, file open)
 - `lib/models/tag.dart` / `tag.g.dart` — Tag model
 - `lib/services/notification_service.dart` — Desktop notification service
 - `lib/widgets/dialogs/tag_dialogs.dart` — Tag management dialogs

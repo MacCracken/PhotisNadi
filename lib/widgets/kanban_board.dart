@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/task_service.dart';
+import '../services/theme_service.dart';
 import '../models/task.dart';
 import '../models/project.dart';
 import '../models/board.dart';
@@ -15,11 +16,13 @@ import '../widgets/common/project_header.dart';
 class PaginatedTaskColumn extends StatefulWidget {
   final BoardColumn column;
   final Project project;
+  final Map<String, FocusNode>? taskFocusNodes;
 
   const PaginatedTaskColumn({
     super.key,
     required this.column,
     required this.project,
+    this.taskFocusNodes,
   });
 
   @override
@@ -140,6 +143,7 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
   }
 
   Widget _buildDraggableTask(Task task) {
+    final focusNode = widget.taskFocusNodes?[task.id];
     return Draggable<Task>(
       data: task,
       feedback: Material(
@@ -165,6 +169,7 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
       ),
       child: TaskCard(
         task: task,
+        focusNode: focusNode,
         onTap: () => showTaskDetails(context, task),
         onLongPress: () => showTaskMenu(context, task),
       ),
@@ -188,16 +193,63 @@ class KanbanBoard extends StatefulWidget {
   const KanbanBoard({super.key});
 
   @override
-  State<KanbanBoard> createState() => _KanbanBoardState();
+  State<KanbanBoard> createState() => KanbanBoardState();
 }
 
-class _KanbanBoardState extends State<KanbanBoard> {
+class KanbanBoardState extends State<KanbanBoard> {
   final ScrollController _scrollController = ScrollController();
+  final Map<String, FocusNode> _taskFocusNodes = {};
+  int _focusedColumnIndex = 0;
+  int _focusedTaskIndex = 0;
 
   @override
   void dispose() {
     _scrollController.dispose();
+    for (final node in _taskFocusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
+  }
+
+  FocusNode _getOrCreateFocusNode(String taskId) {
+    return _taskFocusNodes.putIfAbsent(taskId, () => FocusNode());
+  }
+
+  void _navigateTask(int delta) {
+    final taskService = context.read<TaskService>();
+    final project = taskService.selectedProject;
+    if (project == null) return;
+
+    final columns = project.columns;
+    if (columns.isEmpty) return;
+
+    _focusedColumnIndex = _focusedColumnIndex.clamp(0, columns.length - 1);
+    final column = columns[_focusedColumnIndex];
+    final tasks = taskService.getTasksForColumnPaginated(
+      column.id,
+      projectId: project.id,
+      page: 0,
+    );
+    if (tasks.isEmpty) return;
+
+    _focusedTaskIndex = (_focusedTaskIndex + delta).clamp(0, tasks.length - 1);
+    final task = tasks[_focusedTaskIndex];
+    final node = _getOrCreateFocusNode(task.id);
+    node.requestFocus();
+  }
+
+  void _navigateColumn(int delta) {
+    final taskService = context.read<TaskService>();
+    final project = taskService.selectedProject;
+    if (project == null) return;
+
+    final columns = project.columns;
+    if (columns.isEmpty) return;
+
+    _focusedColumnIndex =
+        (_focusedColumnIndex + delta).clamp(0, columns.length - 1);
+    _focusedTaskIndex = 0;
+    _navigateTask(0);
   }
 
   @override
@@ -216,47 +268,72 @@ class _KanbanBoardState extends State<KanbanBoard> {
               if (selectedProjectId == null) {
                 return _buildNoProjectSelected();
               }
-              return Selector<TaskService, List<BoardColumn>>(
-                selector: (_, service) =>
-                    service.selectedProject?.columns ?? [],
-                builder: (context, columns, _) => ReorderableListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  buildDefaultDragHandles: false,
-                  itemCount: columns.length,
-                  onReorder: (oldIndex, newIndex) {
-                    if (newIndex > oldIndex) newIndex--;
-                    final columnIds = columns.map((c) => c.id).toList();
-                    final id = columnIds.removeAt(oldIndex);
-                    columnIds.insert(newIndex, id);
-                    context
-                        .read<TaskService>()
-                        .reorderColumns(selectedProjectId, columnIds);
-                  },
-                  itemBuilder: (context, index) {
-                    final column = columns[index];
-                    return Selector<TaskService, Project?>(
-                      selector: (_, service) => service.selectedProject,
-                      builder: (context, project, _) {
-                        if (project == null) return const SizedBox.shrink();
-                        return Container(
-                          key: ValueKey(column.id),
-                          width: AppConstants.columnWidth,
-                          margin: const EdgeInsets.only(
-                              right: AppConstants.columnMargin),
-                          child: PaginatedTaskColumn(
-                            column: column,
-                            project: project,
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              );
+              return _buildColumns(selectedProjectId);
             },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildColumns(String selectedProjectId) {
+    final themeService = context.watch<ThemeService>();
+    final compact = themeService.isCompact;
+    final colWidth =
+        compact ? AppConstants.columnWidthCompact : AppConstants.columnWidth;
+    final colMargin =
+        compact ? AppConstants.columnMarginCompact : AppConstants.columnMargin;
+
+    return Selector<TaskService, List<BoardColumn>>(
+      selector: (_, service) => service.selectedProject?.columns ?? [],
+      builder: (context, columns, _) {
+        // Build focus nodes for all visible tasks
+        final taskService = context.read<TaskService>();
+        for (final column in columns) {
+          final tasks = taskService.getTasksForColumnPaginated(
+            column.id,
+            projectId: selectedProjectId,
+            page: 0,
+          );
+          for (final task in tasks) {
+            _getOrCreateFocusNode(task.id);
+          }
+        }
+
+        return ReorderableListView.builder(
+          scrollDirection: Axis.horizontal,
+          buildDefaultDragHandles: false,
+          itemCount: columns.length,
+          onReorder: (oldIndex, newIndex) {
+            if (newIndex > oldIndex) newIndex--;
+            final columnIds = columns.map((c) => c.id).toList();
+            final id = columnIds.removeAt(oldIndex);
+            columnIds.insert(newIndex, id);
+            context
+                .read<TaskService>()
+                .reorderColumns(selectedProjectId, columnIds);
+          },
+          itemBuilder: (context, index) {
+            final column = columns[index];
+            return Selector<TaskService, Project?>(
+              selector: (_, service) => service.selectedProject,
+              builder: (context, project, _) {
+                if (project == null) return const SizedBox.shrink();
+                return Container(
+                  key: ValueKey(column.id),
+                  width: colWidth,
+                  margin: EdgeInsets.only(right: colMargin),
+                  child: PaginatedTaskColumn(
+                    column: column,
+                    project: project,
+                    taskFocusNodes: _taskFocusNodes,
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -271,4 +348,9 @@ class _KanbanBoardState extends State<KanbanBoard> {
   Widget _buildHeader(Project? project) {
     return ProjectHeader(project: project);
   }
+
+  void navigateNextTask() => _navigateTask(1);
+  void navigatePrevTask() => _navigateTask(-1);
+  void navigateNextColumn() => _navigateColumn(1);
+  void navigatePrevColumn() => _navigateColumn(-1);
 }

@@ -10,6 +10,11 @@ class KeyboardShortcuts {
     const SingleActivator(LogicalKeyboardKey.keyF, control: true):
         const FocusSearchIntent(),
     const SingleActivator(LogicalKeyboardKey.escape): const EscapeIntent(),
+    // Task navigation
+    const SingleActivator(LogicalKeyboardKey.keyJ): const NextTaskIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyK): const PrevTaskIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyH): const PrevColumnIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyL): const NextColumnIntent(),
   };
 }
 
@@ -25,11 +30,31 @@ class EscapeIntent extends Intent {
   const EscapeIntent();
 }
 
+class NextTaskIntent extends Intent {
+  const NextTaskIntent();
+}
+
+class PrevTaskIntent extends Intent {
+  const PrevTaskIntent();
+}
+
+class NextColumnIntent extends Intent {
+  const NextColumnIntent();
+}
+
+class PrevColumnIntent extends Intent {
+  const PrevColumnIntent();
+}
+
 class KeyboardShortcutsWrapper extends StatelessWidget {
   final Widget child;
   final VoidCallback? onAddTask;
   final VoidCallback? onFocusSearch;
   final VoidCallback? onEscape;
+  final VoidCallback? onNextTask;
+  final VoidCallback? onPrevTask;
+  final VoidCallback? onNextColumn;
+  final VoidCallback? onPrevColumn;
 
   const KeyboardShortcutsWrapper({
     super.key,
@@ -37,6 +62,10 @@ class KeyboardShortcutsWrapper extends StatelessWidget {
     this.onAddTask,
     this.onFocusSearch,
     this.onEscape,
+    this.onNextTask,
+    this.onPrevTask,
+    this.onNextColumn,
+    this.onPrevColumn,
   });
 
   @override
@@ -60,6 +89,30 @@ class KeyboardShortcutsWrapper extends StatelessWidget {
           EscapeIntent: CallbackAction<EscapeIntent>(
             onInvoke: (_) {
               onEscape?.call();
+              return null;
+            },
+          ),
+          NextTaskIntent: CallbackAction<NextTaskIntent>(
+            onInvoke: (_) {
+              onNextTask?.call();
+              return null;
+            },
+          ),
+          PrevTaskIntent: CallbackAction<PrevTaskIntent>(
+            onInvoke: (_) {
+              onPrevTask?.call();
+              return null;
+            },
+          ),
+          NextColumnIntent: CallbackAction<NextColumnIntent>(
+            onInvoke: (_) {
+              onNextColumn?.call();
+              return null;
+            },
+          ),
+          PrevColumnIntent: CallbackAction<PrevColumnIntent>(
+            onInvoke: (_) {
+              onPrevColumn?.call();
               return null;
             },
           ),

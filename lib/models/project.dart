@@ -41,6 +41,14 @@ class Project extends HiveObject {
   @HiveField(10)
   List<BoardColumn> columns;
 
+  /// User IDs this project is shared with (for team collaboration).
+  @HiveField(11)
+  List<String> sharedWith;
+
+  /// Owner user ID.
+  @HiveField(12)
+  String? ownerId;
+
   static List<BoardColumn> defaultColumns() {
     return [
       BoardColumn(
@@ -76,6 +84,8 @@ class Project extends HiveObject {
     this.isArchived = false,
     DateTime? modifiedAt,
     List<BoardColumn>? columns,
+    this.sharedWith = const [],
+    this.ownerId,
   })  : modifiedAt = modifiedAt ?? createdAt,
         columns = columns ?? defaultColumns() {
     if (!isValidUuid(id)) {
@@ -110,6 +120,8 @@ class Project extends HiveObject {
     bool? isArchived,
     DateTime? modifiedAt,
     List<BoardColumn>? columns,
+    List<String>? sharedWith,
+    String? ownerId,
   }) {
     return Project(
       id: id ?? this.id,
@@ -123,6 +135,8 @@ class Project extends HiveObject {
       isArchived: isArchived ?? this.isArchived,
       modifiedAt: modifiedAt ?? this.modifiedAt,
       columns: columns ?? this.columns,
+      sharedWith: sharedWith ?? this.sharedWith,
+      ownerId: ownerId ?? this.ownerId,
     );
   }
 }
