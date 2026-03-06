@@ -98,6 +98,23 @@ Cross-platform productivity app combining Kanban-style task management with dail
 
 ---
 
+## SecureYeoman Integration
+
+**Priority:** Low — Photis Nadi is a client-only Flutter app with no backend API, limiting integration surface.
+
+### Potential Integration Paths
+
+- [ ] **Task sync via SecureYeoman API** — If Supabase Sync (Medium Priority #4) is implemented, an alternative path is syncing tasks through SecureYeoman's storage layer instead. SecureYeoman personalities could then access task data for AI-powered suggestions (priority recommendations, dependency analysis, ritual scheduling). Requires adding a lightweight REST endpoint or using SecureYeoman's existing brain/memory API to store task state.
+- [ ] **AI task assistant via MCP** — Once a backend exists (Supabase or SecureYeoman-backed), expose task CRUD as MCP tools so SecureYeoman personalities can create/update/query tasks conversationally. Not viable until a backend is added.
+- [ ] **Ritual analytics** — Feed ritual completion data to SecureYeoman's observability pipeline for trend analysis and pattern recognition across productivity habits.
+
+### Not Applicable
+
+- **AGNOS Docker base** — No Docker component (Flutter client-only). Not a candidate for agnosticos migration.
+- **MCP tool registration** — No REST API to proxy. Blocked until a backend is added.
+
+---
+
 ## Backlog (Future)
 
 - Markdown support in task descriptions
