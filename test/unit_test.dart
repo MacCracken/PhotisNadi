@@ -7,7 +7,12 @@ import 'package:photisnadi/models/board.dart';
 import 'package:photisnadi/models/project.dart';
 import 'package:photisnadi/models/tag.dart';
 import 'package:photisnadi/services/task_service.dart';
+import 'package:photisnadi/services/sync_service.dart';
+import 'package:photisnadi/services/yeoman_service.dart';
 import 'package:photisnadi/common/utils.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart' as http_testing;
 
 bool _adaptersRegistered = false;
 
@@ -1203,6 +1208,836 @@ void main() {
       );
 
       expect(task!.tags, ['Bug', 'UI']);
+    });
+  });
+
+  group('Due Date Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('should add task with due date', () async {
+      final dueDate = DateTime(2026, 4, 1);
+      final task = await taskService.addTask(
+        'Task with due date',
+        dueDate: dueDate,
+      );
+
+      expect(task!.dueDate, dueDate);
+    });
+
+    test('should add task without due date', () async {
+      final task = await taskService.addTask('Task without due date');
+
+      expect(task!.dueDate, isNull);
+    });
+
+    test('should update task due date', () async {
+      final task = await taskService.addTask('Test task');
+      final dueDate = DateTime(2026, 5, 15);
+      task!.dueDate = dueDate;
+      await taskService.updateTask(task);
+
+      final updated =
+          taskService.tasks.firstWhere((t) => t.id == task.id);
+      expect(updated.dueDate, dueDate);
+    });
+
+    test('should filter tasks due before date', () async {
+      final project = await taskService.addProject('Test', 'TST');
+      taskService.selectProject(project!.id);
+
+      await taskService.addTask(
+        'Due soon',
+        dueDate: DateTime(2026, 3, 10),
+      );
+      await taskService.addTask(
+        'Due later',
+        dueDate: DateTime(2026, 6, 1),
+      );
+      await taskService.addTask('No due date');
+
+      taskService.setFilterDueBefore(DateTime(2026, 4, 1));
+      final filtered = taskService.getFilteredTasks(project.id);
+
+      expect(filtered.length, 1);
+      expect(filtered.first.title, 'Due soon');
+    });
+  });
+
+  group('Sync Serialization Tests', () {
+    test('Task toSyncMap produces correct map', () {
+      final task = Task(
+        id: '550e8400-e29b-41d4-a716-446655440050',
+        title: 'Sync Task',
+        description: 'A test task',
+        status: TaskStatus.inProgress,
+        priority: TaskPriority.high,
+        createdAt: DateTime(2026, 1, 1),
+        dueDate: DateTime(2026, 2, 1),
+        projectId: '550e8400-e29b-41d4-a716-446655440099',
+        tags: ['bug', 'ui'],
+        taskKey: 'TST-1',
+        dependsOn: ['550e8400-e29b-41d4-a716-446655440051'],
+      );
+
+      final map = task.toSyncMap('user-123');
+
+      expect(map['id'], task.id);
+      expect(map['user_id'], 'user-123');
+      expect(map['title'], 'Sync Task');
+      expect(map['description'], 'A test task');
+      expect(map['status'], 'inProgress');
+      expect(map['priority'], 'high');
+      expect(map['project_id'], task.projectId);
+      expect(map['tags'], ['bug', 'ui']);
+      expect(map['task_key'], 'TST-1');
+      expect(map['depends_on'],
+          ['550e8400-e29b-41d4-a716-446655440051']);
+      expect(map['due_date'], isNotNull);
+      expect(map['created_at'], isNotNull);
+      expect(map['modified_at'], isNotNull);
+    });
+
+    test('Task fromMap parses correctly', () {
+      final map = {
+        'id': '550e8400-e29b-41d4-a716-446655440050',
+        'title': 'Parsed Task',
+        'description': 'Desc',
+        'status': 'inProgress',
+        'priority': 'high',
+        'created_at': '2026-01-01T00:00:00.000',
+        'modified_at': '2026-01-02T00:00:00.000',
+        'due_date': '2026-02-01T00:00:00.000',
+        'project_id': '550e8400-e29b-41d4-a716-446655440099',
+        'tags': ['bug'],
+        'task_key': 'TST-1',
+        'depends_on': ['550e8400-e29b-41d4-a716-446655440051'],
+      };
+
+      final task = TaskParsing.fromMap(map);
+
+      expect(task.id, map['id']);
+      expect(task.title, 'Parsed Task');
+      expect(task.description, 'Desc');
+      expect(task.status, TaskStatus.inProgress);
+      expect(task.priority, TaskPriority.high);
+      expect(task.dueDate, isNotNull);
+      expect(task.tags, ['bug']);
+      expect(task.taskKey, 'TST-1');
+      expect(task.dependsOn,
+          ['550e8400-e29b-41d4-a716-446655440051']);
+    });
+
+    test('Task fromMap handles missing optional fields', () {
+      final map = {
+        'id': '550e8400-e29b-41d4-a716-446655440050',
+        'title': 'Minimal Task',
+        'status': 'todo',
+        'priority': 'medium',
+        'created_at': '2026-01-01T00:00:00.000',
+      };
+
+      final task = TaskParsing.fromMap(map);
+
+      expect(task.title, 'Minimal Task');
+      expect(task.description, isNull);
+      expect(task.dueDate, isNull);
+      expect(task.projectId, isNull);
+      expect(task.tags, isEmpty);
+      expect(task.taskKey, isNull);
+      expect(task.dependsOn, isEmpty);
+    });
+
+    test('Task fromMap handles invalid status gracefully', () {
+      final map = {
+        'id': '550e8400-e29b-41d4-a716-446655440050',
+        'title': 'Bad Status',
+        'status': 'nonexistent',
+        'priority': 'nonexistent',
+        'created_at': '2026-01-01T00:00:00.000',
+      };
+
+      final task = TaskParsing.fromMap(map);
+
+      expect(task.status, TaskStatus.todo);
+      expect(task.priority, TaskPriority.medium);
+    });
+
+    test('Project toSyncMap produces correct map', () {
+      final project = Project(
+        id: '550e8400-e29b-41d4-a716-446655440060',
+        name: 'Sync Project',
+        projectKey: 'SP',
+        description: 'A project',
+        createdAt: DateTime(2026, 1, 1),
+        color: '#FF0000',
+        iconName: 'star',
+        taskCounter: 5,
+        isArchived: true,
+      );
+
+      final map = project.toSyncMap('user-123');
+
+      expect(map['id'], project.id);
+      expect(map['user_id'], 'user-123');
+      expect(map['name'], 'Sync Project');
+      expect(map['key'], 'SP');
+      expect(map['description'], 'A project');
+      expect(map['color'], '#FF0000');
+      expect(map['icon_name'], 'star');
+      expect(map['task_counter'], 5);
+      expect(map['is_archived'], true);
+    });
+
+    test('Project fromMap parses correctly', () {
+      final map = {
+        'id': '550e8400-e29b-41d4-a716-446655440060',
+        'name': 'Parsed Project',
+        'key': 'PP',
+        'description': 'Desc',
+        'created_at': '2026-01-01T00:00:00.000',
+        'modified_at': '2026-01-02T00:00:00.000',
+        'color': '#00FF00',
+        'icon_name': 'folder',
+        'task_counter': 10,
+        'is_archived': false,
+      };
+
+      final project = ProjectParsing.fromMap(map);
+
+      expect(project.id, map['id']);
+      expect(project.name, 'Parsed Project');
+      expect(project.projectKey, 'PP');
+      expect(project.color, '#00FF00');
+      expect(project.iconName, 'folder');
+      expect(project.taskCounter, 10);
+      expect(project.isArchived, false);
+    });
+
+    test('Ritual toSyncMap produces correct map', () {
+      final ritual = Ritual(
+        id: '550e8400-e29b-41d4-a716-446655440070',
+        title: 'Sync Ritual',
+        description: 'A ritual',
+        createdAt: DateTime(2026, 1, 1),
+        streakCount: 7,
+        frequency: RitualFrequency.weekly,
+      );
+
+      final map = ritual.toSyncMap('user-123');
+
+      expect(map['id'], ritual.id);
+      expect(map['user_id'], 'user-123');
+      expect(map['title'], 'Sync Ritual');
+      expect(map['frequency'], 'weekly');
+      expect(map['streak_count'], 7);
+    });
+
+    test('Ritual fromMap parses correctly', () {
+      final map = {
+        'id': '550e8400-e29b-41d4-a716-446655440070',
+        'title': 'Parsed Ritual',
+        'description': 'Desc',
+        'is_completed': true,
+        'created_at': '2026-01-01T00:00:00.000',
+        'last_completed': '2026-01-05T00:00:00.000',
+        'reset_time': null,
+        'streak_count': 3,
+        'frequency': 'daily',
+      };
+
+      final ritual = RitualParsing.fromMap(map);
+
+      expect(ritual.id, map['id']);
+      expect(ritual.title, 'Parsed Ritual');
+      expect(ritual.isCompleted, true);
+      expect(ritual.streakCount, 3);
+      expect(ritual.frequency, RitualFrequency.daily);
+    });
+
+    test('Tag toSyncMap produces correct map', () {
+      final tag = Tag(
+        id: '550e8400-e29b-41d4-a716-446655440080',
+        name: 'Bug',
+        color: '#E53935',
+        projectId: '550e8400-e29b-41d4-a716-446655440099',
+      );
+
+      final map = tag.toSyncMap('user-123');
+
+      expect(map['id'], tag.id);
+      expect(map['user_id'], 'user-123');
+      expect(map['name'], 'Bug');
+      expect(map['color'], '#E53935');
+      expect(map['project_id'], tag.projectId);
+    });
+
+    test('Tag fromMap parses correctly', () {
+      final map = {
+        'id': '550e8400-e29b-41d4-a716-446655440080',
+        'name': 'Feature',
+        'color': '#1E88E5',
+        'project_id': '550e8400-e29b-41d4-a716-446655440099',
+      };
+
+      final tag = TagParsing.fromMap(map);
+
+      expect(tag.id, map['id']);
+      expect(tag.name, 'Feature');
+      expect(tag.color, '#1E88E5');
+      expect(tag.projectId, map['project_id']);
+    });
+
+    test('Task roundtrip: toSyncMap -> fromMap preserves data', () {
+      final original = Task(
+        id: '550e8400-e29b-41d4-a716-446655440050',
+        title: 'Roundtrip Task',
+        description: 'Test desc',
+        status: TaskStatus.inReview,
+        priority: TaskPriority.low,
+        createdAt: DateTime(2026, 1, 1),
+        dueDate: DateTime(2026, 3, 15),
+        projectId: '550e8400-e29b-41d4-a716-446655440099',
+        tags: ['ui', 'bug'],
+        taskKey: 'RT-1',
+        dependsOn: ['550e8400-e29b-41d4-a716-446655440051'],
+      );
+
+      final map = original.toSyncMap('user-123');
+      final parsed = TaskParsing.fromMap(map);
+
+      expect(parsed.id, original.id);
+      expect(parsed.title, original.title);
+      expect(parsed.description, original.description);
+      expect(parsed.status, original.status);
+      expect(parsed.priority, original.priority);
+      expect(parsed.tags, original.tags);
+      expect(parsed.taskKey, original.taskKey);
+      expect(parsed.dependsOn, original.dependsOn);
+    });
+  });
+
+  group('SyncConflict Tests', () {
+    test('SyncConflict stores all fields correctly', () {
+      final now = DateTime.now();
+      final earlier = now.subtract(const Duration(seconds: 3));
+
+      final conflict = SyncConflict(
+        entityType: 'task',
+        entityId: '550e8400-e29b-41d4-a716-446655440050',
+        entityTitle: 'Conflict Task',
+        localModifiedAt: earlier,
+        remoteModifiedAt: now,
+        localData: {'title': 'Local version'},
+        remoteData: {'title': 'Remote version'},
+      );
+
+      expect(conflict.entityType, 'task');
+      expect(conflict.entityTitle, 'Conflict Task');
+      expect(conflict.localModifiedAt, earlier);
+      expect(conflict.remoteModifiedAt, now);
+      expect(conflict.localData['title'], 'Local version');
+      expect(conflict.remoteData['title'], 'Remote version');
+    });
+  });
+
+  group('YeomanService Tests', () {
+    late YeomanService yeomanService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      await Hive.openBox('settings');
+      await Hive.openBox<Task>('tasks');
+      await Hive.openBox<Ritual>('rituals');
+      await Hive.openBox<Project>('projects');
+      yeomanService = YeomanService();
+    });
+
+    tearDown(() async {
+      yeomanService.dispose();
+      await tearDownTestHive();
+    });
+
+    test('initial state is disconnected', () {
+      expect(yeomanService.isInitialized, false);
+      expect(yeomanService.isEnabled, false);
+      expect(yeomanService.isConnected, false);
+      expect(yeomanService.syncState, YeomanSyncState.idle);
+    });
+
+    test('initialize loads settings from Hive', () async {
+      // Set mock client before initialize since enabled=true triggers sync
+      final mockClient = http_testing.MockClient((request) async {
+        if (request.url.path == '/api/v1/brain/knowledge') {
+          if (request.method == 'GET') {
+            return http.Response(jsonEncode({'knowledge': []}), 200);
+          }
+          return http.Response(jsonEncode({'id': 'k1'}), 201);
+        }
+        return http.Response('OK', 200);
+      });
+      yeomanService.setHttpClient(mockClient);
+
+      final settingsBox = Hive.box('settings');
+      await settingsBox.put('yeoman_enabled', true);
+      await settingsBox.put('yeoman_base_url', 'http://localhost:18789');
+      await settingsBox.put('yeoman_api_key', 'sk-test-key');
+      await settingsBox.put('yeoman_last_synced_at', '2026-03-01T00:00:00.000Z');
+
+      await yeomanService.initialize();
+
+      expect(yeomanService.isInitialized, true);
+      expect(yeomanService.isEnabled, true);
+      expect(yeomanService.baseUrl, 'http://localhost:18789');
+      expect(yeomanService.isConnected, true);
+      expect(yeomanService.lastSyncedAt, isNotNull);
+    });
+
+    test('configure saves baseUrl and apiKey', () async {
+      await yeomanService.initialize();
+
+      final result = await yeomanService.configure(
+        baseUrl: 'http://localhost:18789/',
+        apiKey: 'sk-test',
+      );
+
+      expect(result, true);
+      expect(yeomanService.baseUrl, 'http://localhost:18789');
+      expect(yeomanService.isConnected, true);
+
+      final settingsBox = Hive.box('settings');
+      expect(settingsBox.get('yeoman_base_url'), 'http://localhost:18789');
+      expect(settingsBox.get('yeoman_api_key'), 'sk-test');
+    });
+
+    test('configure with password authenticates via API', () async {
+      final mockClient = http_testing.MockClient((request) async {
+        if (request.url.path == '/api/v1/auth/login') {
+          return http.Response(
+            jsonEncode({
+              'access_token': 'jwt-test-token',
+              'refresh_token': 'refresh-token',
+              'expires_in': 3600,
+            }),
+            200,
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+
+      final result = await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        password: 'admin-pass',
+      );
+
+      expect(result, true);
+      expect(yeomanService.isConnected, true);
+    });
+
+    test('configure with wrong password fails', () async {
+      final mockClient = http_testing.MockClient((request) async {
+        return http.Response('Unauthorized', 401);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+
+      final result = await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        password: 'wrong',
+      );
+
+      expect(result, false);
+    });
+
+    test('testConnection returns true on healthy server', () async {
+      final mockClient = http_testing.MockClient((request) async {
+        if (request.url.path == '/health') {
+          return http.Response(
+            jsonEncode({'status': 'healthy'}),
+            200,
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-test',
+      );
+
+      final result = await yeomanService.testConnection();
+      expect(result, true);
+    });
+
+    test('testConnection returns false on unreachable server', () async {
+      final mockClient = http_testing.MockClient((request) async {
+        throw Exception('Connection refused');
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:99999',
+        apiKey: 'sk-test',
+      );
+
+      final result = await yeomanService.testConnection();
+      expect(result, false);
+    });
+
+    test('setEnabled persists to settings', () async {
+      await yeomanService.initialize();
+      await yeomanService.setEnabled(true);
+
+      final settingsBox = Hive.box('settings');
+      expect(settingsBox.get('yeoman_enabled'), true);
+      expect(yeomanService.isEnabled, true);
+
+      await yeomanService.setEnabled(false);
+      expect(settingsBox.get('yeoman_enabled'), false);
+    });
+
+    test('syncTasks pushes task data to brain knowledge', () async {
+      final requests = <http.Request>[];
+      final mockClient = http_testing.MockClient((request) async {
+        requests.add(request);
+        if (request.url.path == '/api/v1/brain/knowledge' &&
+            request.method == 'GET') {
+          return http.Response(
+            jsonEncode({'knowledge': []}),
+            200,
+          );
+        }
+        if (request.url.path == '/api/v1/brain/knowledge' &&
+            request.method == 'POST') {
+          return http.Response(
+            jsonEncode({'id': 'know_123'}),
+            201,
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-test',
+      );
+
+      // Add a task
+      final taskBox = Hive.box<Task>('tasks');
+      const taskId = '550e8400-e29b-41d4-a716-446655440000';
+      await taskBox.put(
+        taskId,
+        Task(
+          id: taskId,
+          title: 'Test Task',
+          status: TaskStatus.todo,
+          priority: TaskPriority.high,
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      final result = await yeomanService.syncTasks();
+      expect(result, true);
+
+      // Verify knowledge POST was made
+      final postRequests = requests.where(
+        (r) => r.method == 'POST' && r.url.path == '/api/v1/brain/knowledge',
+      );
+      expect(postRequests, isNotEmpty);
+
+      final postBody = jsonDecode(postRequests.first.body);
+      expect(postBody['topic'], 'photis-nadi-tasks');
+      expect(postBody['source'], 'photis-nadi');
+    });
+
+    test('syncRitualAnalytics computes correct stats', () async {
+      final capturedBody = <String, dynamic>{};
+      final mockClient = http_testing.MockClient((request) async {
+        if (request.url.path == '/api/v1/brain/knowledge' &&
+            request.method == 'GET') {
+          return http.Response(
+            jsonEncode({'knowledge': []}),
+            200,
+          );
+        }
+        if (request.url.path == '/api/v1/brain/knowledge' &&
+            request.method == 'POST') {
+          capturedBody.addAll(
+            jsonDecode(request.body) as Map<String, dynamic>,
+          );
+          return http.Response(jsonEncode({'id': 'know_456'}), 201);
+        }
+        return http.Response('Not found', 404);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-test',
+      );
+
+      // Add rituals
+      final ritualBox = Hive.box<Ritual>('rituals');
+      const ritualId1 = '550e8400-e29b-41d4-a716-446655440001';
+      const ritualId2 = '550e8400-e29b-41d4-a716-446655440002';
+      await ritualBox.put(
+        ritualId1,
+        Ritual(
+          id: ritualId1,
+          title: 'Morning Meditation',
+          isCompleted: true,
+          createdAt: DateTime.now(),
+          streakCount: 5,
+          frequency: RitualFrequency.daily,
+        ),
+      );
+      await ritualBox.put(
+        ritualId2,
+        Ritual(
+          id: ritualId2,
+          title: 'Weekly Review',
+          isCompleted: false,
+          createdAt: DateTime.now(),
+          streakCount: 3,
+          frequency: RitualFrequency.weekly,
+        ),
+      );
+
+      final result = await yeomanService.syncRitualAnalytics();
+      expect(result, true);
+
+      expect(capturedBody['topic'], 'photis-nadi-rituals');
+      final content = jsonDecode(capturedBody['content']);
+      final analytics = content['analytics'];
+      expect(analytics['total_rituals'], 2);
+      expect(analytics['completed_today'], 1);
+      expect(analytics['longest_streak'], 5);
+      expect(analytics['average_streak'], 4.0);
+      expect(analytics['by_frequency']['daily']['total'], 1);
+      expect(analytics['by_frequency']['weekly']['total'], 1);
+    });
+
+    test('syncAll sets state correctly on success', () async {
+      final mockClient = http_testing.MockClient((request) async {
+        if (request.url.path == '/api/v1/brain/knowledge') {
+          if (request.method == 'GET') {
+            return http.Response(jsonEncode({'knowledge': []}), 200);
+          }
+          if (request.method == 'POST') {
+            return http.Response(jsonEncode({'id': 'k1'}), 201);
+          }
+        }
+        return http.Response('Not found', 404);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-test',
+      );
+
+      // Call syncAll directly (don't use setEnabled which also triggers sync)
+      final result = await yeomanService.syncAll();
+      expect(result, true);
+      expect(yeomanService.syncState, YeomanSyncState.success);
+      expect(yeomanService.lastSyncedAt, isNotNull);
+    });
+
+    test('syncAll sets error state on failure', () async {
+      final mockClient = http_testing.MockClient((request) async {
+        return http.Response('Internal Server Error', 500);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-test',
+      );
+
+      final result = await yeomanService.syncAll();
+      expect(result, false);
+      expect(yeomanService.syncState, YeomanSyncState.error);
+    });
+
+    test('generateApiKey returns key on success', () async {
+      final mockClient = http_testing.MockClient((request) async {
+        if (request.url.path == '/api/v1/auth/api-keys' &&
+            request.method == 'POST') {
+          final body = jsonDecode(request.body);
+          expect(body['name'], 'Photis Nadi MCP');
+          expect(body['permissions'], contains('brain.read'));
+          return http.Response(
+            jsonEncode({
+              'id': 'key_123',
+              'name': 'Photis Nadi MCP',
+              'api_key': 'sk-generated-key',
+              'permissions': body['permissions'],
+            }),
+            201,
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-admin',
+      );
+
+      final key = await yeomanService.generateApiKey();
+      expect(key, 'sk-generated-key');
+    });
+
+    test('generateApiKey returns null when not connected', () async {
+      await yeomanService.initialize();
+      final key = await yeomanService.generateApiKey();
+      expect(key, null);
+    });
+
+    test('registerMcpTools sends correct tool manifest', () async {
+      Map<String, dynamic>? capturedBody;
+      final mockClient = http_testing.MockClient((request) async {
+        if (request.url.path == '/api/v1/mcp/servers' &&
+            request.method == 'POST') {
+          capturedBody = jsonDecode(request.body);
+          return http.Response(
+            jsonEncode({'server': {'id': 'srv_123'}}),
+            201,
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-test',
+      );
+
+      final result = await yeomanService.registerMcpTools(
+        supabaseUrl: 'https://my-project.supabase.co',
+        supabaseServiceKey: 'service-key-123',
+      );
+
+      expect(result, true);
+      expect(capturedBody, isNotNull);
+      expect(capturedBody!['name'], 'Photis Nadi');
+      expect(capturedBody!['transport'], 'streamable-http');
+
+      final tools = capturedBody!['tools'] as List;
+      expect(tools.length, 6);
+
+      final toolNames = tools.map((t) => t['name']).toSet();
+      expect(toolNames, contains('photis_list_tasks'));
+      expect(toolNames, contains('photis_create_task'));
+      expect(toolNames, contains('photis_update_task'));
+      expect(toolNames, contains('photis_list_projects'));
+      expect(toolNames, contains('photis_list_rituals'));
+      expect(toolNames, contains('photis_task_analytics'));
+    });
+
+    test('disconnect clears credentials and stops sync', () async {
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-test',
+      );
+      await yeomanService.setEnabled(true);
+
+      expect(yeomanService.isConnected, true);
+      expect(yeomanService.isEnabled, true);
+
+      await yeomanService.disconnect();
+
+      expect(yeomanService.isConnected, false);
+      expect(yeomanService.isEnabled, false);
+      expect(yeomanService.syncState, YeomanSyncState.idle);
+
+      final settingsBox = Hive.box('settings');
+      expect(settingsBox.get('yeoman_api_key'), null);
+      expect(settingsBox.get('yeoman_enabled'), false);
+    });
+
+    test('upserts knowledge by deleting existing entry first', () async {
+      final deleteCalled = <String>[];
+      final mockClient = http_testing.MockClient((request) async {
+        if (request.url.path == '/api/v1/brain/knowledge' &&
+            request.method == 'GET') {
+          return http.Response(
+            jsonEncode({
+              'knowledge': [
+                {'id': 'existing_123', 'topic': 'photis-nadi-tasks'}
+              ]
+            }),
+            200,
+          );
+        }
+        if (request.url.path.startsWith('/api/v1/brain/knowledge/') &&
+            request.method == 'DELETE') {
+          deleteCalled.add(request.url.pathSegments.last);
+          return http.Response('', 204);
+        }
+        if (request.url.path == '/api/v1/brain/knowledge' &&
+            request.method == 'POST') {
+          return http.Response(jsonEncode({'id': 'new_456'}), 201);
+        }
+        return http.Response('Not found', 404);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-test',
+      );
+
+      final result = await yeomanService.syncTasks();
+      expect(result, true);
+      expect(deleteCalled, contains('existing_123'));
+    });
+
+    test('headers include API key when set', () async {
+      String? capturedAuthHeader;
+      final mockClient = http_testing.MockClient((request) async {
+        capturedAuthHeader = request.headers['X-API-Key'];
+        return http.Response(jsonEncode({'knowledge': []}), 200);
+      });
+
+      yeomanService.setHttpClient(mockClient);
+      await yeomanService.initialize();
+      await yeomanService.configure(
+        baseUrl: 'http://localhost:18789',
+        apiKey: 'sk-my-key',
+      );
+
+      await yeomanService.syncTasks();
+      expect(capturedAuthHeader, 'sk-my-key');
     });
   });
 }

@@ -10,6 +10,7 @@ void showAddTaskDialog(BuildContext context, {String? columnId}) {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descController = TextEditingController();
   TaskPriority selectedPriority = TaskPriority.medium;
+  DateTime? selectedDueDate;
   final selectedTags = <String>{};
 
   showDialog(
@@ -69,6 +70,12 @@ void showAddTaskDialog(BuildContext context, {String? columnId}) {
                     });
                   },
                 ),
+                const SizedBox(height: 16),
+                _buildDueDatePicker(
+                  context,
+                  selectedDueDate,
+                  (date) => setDialogState(() => selectedDueDate = date),
+                ),
                 if (projectTags.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Text(
@@ -118,6 +125,7 @@ void showAddTaskDialog(BuildContext context, {String? columnId}) {
                         : null,
                     priority: selectedPriority,
                     tags: selectedTags.toList(),
+                    dueDate: selectedDueDate,
                   );
                   Navigator.pop(context);
                 }
@@ -223,6 +231,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
       TextEditingController(text: task.description ?? '');
   TaskPriority selectedPriority = task.priority;
   TaskStatus selectedStatus = task.status;
+  DateTime? selectedDueDate = task.dueDate;
   final selectedTags = Set<String>.from(task.tags);
   final taskService = context.read<TaskService>();
   final projectTasks = taskService
@@ -287,6 +296,12 @@ void showEditTaskDialog(BuildContext context, Task task) {
                       selectedStatus = value!;
                     });
                   },
+                ),
+                const SizedBox(height: 16),
+                _buildDueDatePicker(
+                  context,
+                  selectedDueDate,
+                  (date) => setDialogState(() => selectedDueDate = date),
                 ),
                 if (projectTagDefs.isNotEmpty) ...[
                   const SizedBox(height: 16),
@@ -417,6 +432,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
                     descController.text.isNotEmpty ? descController.text : null;
                 task.priority = selectedPriority;
                 task.status = selectedStatus;
+                task.dueDate = selectedDueDate;
                 task.tags = selectedTags.toList();
                 context.read<TaskService>().updateTask(task);
                 Navigator.pop(context);
@@ -464,6 +480,52 @@ void showTaskMenu(BuildContext context, Task task) {
         ),
       ],
     ),
+  );
+}
+
+Widget _buildDueDatePicker(
+  BuildContext context,
+  DateTime? selectedDate,
+  ValueChanged<DateTime?> onChanged,
+) {
+  return Row(
+    children: [
+      Expanded(
+        child: InkWell(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: selectedDate ?? DateTime.now(),
+              firstDate: DateTime.now().subtract(const Duration(days: 365)),
+              lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+            );
+            if (picked != null) {
+              onChanged(picked);
+            }
+          },
+          child: InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Due Date',
+              suffixIcon: Icon(Icons.calendar_today, size: 18),
+            ),
+            child: Text(
+              selectedDate != null
+                  ? formatDate(selectedDate)
+                  : 'No due date',
+              style: TextStyle(
+                color: selectedDate != null ? null : Colors.grey,
+              ),
+            ),
+          ),
+        ),
+      ),
+      if (selectedDate != null)
+        IconButton(
+          icon: const Icon(Icons.clear, size: 18),
+          tooltip: 'Remove due date',
+          onPressed: () => onChanged(null),
+        ),
+    ],
   );
 }
 

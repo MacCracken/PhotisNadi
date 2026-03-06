@@ -166,22 +166,68 @@ class TaskCard extends StatelessWidget {
   }
 
   Widget _buildDueDate(DateTime dueDate) {
-    return Row(
-      children: [
-        Icon(
-          Icons.calendar_today,
-          size: AppConstants.iconSizeSmall,
-          color: Colors.grey.shade500,
-        ),
-        const SizedBox(width: AppConstants.tinyPadding),
-        Text(
-          formatDate(dueDate),
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey.shade500,
+    final now = DateTime.now();
+    final isOverdue = dueDate.isBefore(now) && task.status != TaskStatus.done;
+    final isDueToday = dueDate.year == now.year &&
+        dueDate.month == now.month &&
+        dueDate.day == now.day &&
+        task.status != TaskStatus.done;
+    final isDueTomorrow = !isDueToday &&
+        dueDate.difference(DateTime(now.year, now.month, now.day)).inDays ==
+            1 &&
+        task.status != TaskStatus.done;
+
+    Color dateColor;
+    IconData dateIcon;
+    String label;
+
+    if (isOverdue) {
+      dateColor = Colors.red;
+      dateIcon = Icons.warning_amber;
+      final days = now.difference(dueDate).inDays;
+      label = days == 0
+          ? 'Overdue'
+          : 'Overdue by $days day${days == 1 ? '' : 's'}';
+    } else if (isDueToday) {
+      dateColor = Colors.orange;
+      dateIcon = Icons.schedule;
+      label = 'Due today';
+    } else if (isDueTomorrow) {
+      dateColor = Colors.amber.shade700;
+      dateIcon = Icons.calendar_today;
+      label = 'Due tomorrow';
+    } else {
+      dateColor = Colors.grey.shade500;
+      dateIcon = Icons.calendar_today;
+      label = formatDate(dueDate);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: (isOverdue || isDueToday)
+          ? BoxDecoration(
+              color: dateColor.withValues(alpha: 0.1),
+              borderRadius:
+                  BorderRadius.circular(AppConstants.borderRadiusSmall),
+            )
+          : null,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(dateIcon, size: AppConstants.iconSizeSmall, color: dateColor),
+          const SizedBox(width: AppConstants.tinyPadding),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: dateColor,
+              fontWeight: (isOverdue || isDueToday)
+                  ? FontWeight.w600
+                  : FontWeight.normal,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

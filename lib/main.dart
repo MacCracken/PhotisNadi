@@ -12,9 +12,11 @@ import 'models/tag.dart';
 import 'models/task.dart';
 import 'screens/home_screen.dart';
 import 'services/desktop_integration.dart';
+import 'services/notification_service.dart';
 import 'services/sync_service.dart';
 import 'services/task_service.dart';
 import 'services/theme_service.dart';
+import 'services/yeoman_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,11 +84,21 @@ class PhotisNadiApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TaskService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
         ChangeNotifierProvider(create: (_) {
+          final notificationService = NotificationService();
+          notificationService.initialize();
+          return notificationService;
+        }),
+        ChangeNotifierProvider(create: (_) {
           final syncService = SyncService();
           if (supabaseConfigured) {
             syncService.initialize();
           }
           return syncService;
+        }),
+        ChangeNotifierProvider(create: (_) {
+          final yeomanService = YeomanService();
+          yeomanService.initialize();
+          return yeomanService;
         }),
       ],
       child: Consumer<ThemeService>(

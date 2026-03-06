@@ -280,6 +280,7 @@ class TaskService extends ChangeNotifier {
     TaskPriority? priority,
     String? projectId,
     List<String>? tags,
+    DateTime? dueDate,
   }) async {
     try {
       const uuid = Uuid();
@@ -308,6 +309,7 @@ class TaskService extends ChangeNotifier {
         projectId: targetProjectId,
         taskKey: taskKey,
         tags: tags ?? [],
+        dueDate: dueDate,
       );
 
       await _taskBox.put(task.id, task);
