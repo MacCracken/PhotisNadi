@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/project.dart';
 import '../../common/utils.dart';
 import '../dialogs/task_dialogs.dart';
+import '../dialogs/tag_dialogs.dart';
 import '../dialogs/project_dialogs.dart';
 import 'search_filter_bar.dart';
 import 'column_widgets.dart';
@@ -86,6 +87,11 @@ class ProjectHeader extends StatelessWidget {
                   onPressed: onAddTask ?? () => showAddTaskDialog(context),
                   icon: const Icon(Icons.add),
                   tooltip: 'Add Task',
+                ),
+                IconButton(
+                  onPressed: () => showTagManagementDialog(context),
+                  icon: const Icon(Icons.label),
+                  tooltip: 'Manage Tags',
                 ),
                 IconButton(
                   onPressed: onSettings ??

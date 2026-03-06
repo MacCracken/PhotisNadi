@@ -72,7 +72,7 @@ class TaskCard extends StatelessWidget {
               ],
               if (task.tags.isNotEmpty) ...[
                 const SizedBox(height: AppConstants.smallPadding),
-                _buildTags(task.tags),
+                _buildTags(task.tags, taskService),
               ],
               if (task.dueDate != null) ...[
                 const SizedBox(height: AppConstants.smallPadding),
@@ -132,25 +132,32 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTags(List<String> tags) {
+  Widget _buildTags(List<String> tags, TaskService taskService) {
     return Wrap(
       spacing: AppConstants.tinyPadding,
       runSpacing: AppConstants.tinyPadding,
-      children: tags.map((tag) {
+      children: tags.map((tagName) {
+        final tagDef = task.projectId != null
+            ? taskService.getTagByName(tagName, task.projectId!)
+            : null;
+        final tagColor =
+            tagDef != null ? parseColor(tagDef.color) : Colors.blue;
+
         return Container(
           padding: const EdgeInsets.symmetric(
             horizontal: 6,
             vertical: AppConstants.tinyPadding,
           ),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
+            color: tagColor.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
           ),
           child: Text(
-            tag,
+            tagName,
             style: TextStyle(
               fontSize: 10,
-              color: Colors.blue.shade700,
+              color: tagColor,
+              fontWeight: FontWeight.w600,
             ),
           ),
         );

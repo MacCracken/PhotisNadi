@@ -27,6 +27,9 @@ Cross-platform productivity app combining Kanban-style task management with dail
 
 ---
 
+### v2026.3.5
+- Tags System: Create/edit/delete tags with colors, multi-tag filtering, tag management UI
+
 ## Planned Features
 
 ### High Priority
@@ -53,10 +56,10 @@ Cross-platform productivity app combining Kanban-style task management with dail
    - Cross-device sync
    - Conflict resolution UI
 
-5. **Tags System**
-   - Create/edit/delete tags
-   - Tag colors
-   - Filter by multiple tags
+5. ~~Tags System~~
+   - ~~Create/edit/delete tags~~
+   - ~~Tag colors~~
+   - ~~Filter by multiple tags~~
 
 6. **Due Date Notifications**
    - Desktop notifications

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/task_service.dart';
 import '../../models/task.dart';
+import '../../common/utils.dart';
 
 class SearchFilterBar extends StatefulWidget {
   const SearchFilterBar({super.key});
@@ -125,6 +126,8 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
             ],
           ),
           const SizedBox(height: 12),
+          _buildTagFilters(taskService),
+          const SizedBox(height: 12),
           _buildDueDateFilters(taskService),
         ],
       ),
@@ -209,6 +212,51 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
       onChanged: (value) {
         if (value != null) taskService.setSortBy(value);
       },
+    );
+  }
+
+  Widget _buildTagFilters(TaskService taskService) {
+    final projectId = taskService.selectedProjectId;
+    if (projectId == null) return const SizedBox.shrink();
+
+    final projectTags = taskService.getTagsForProject(projectId);
+    if (projectTags.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Tags: ', style: TextStyle(fontSize: 12)),
+            if (taskService.filterTags.isNotEmpty)
+              TextButton(
+                onPressed: () => taskService.clearFilterTags(),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Clear', style: TextStyle(fontSize: 11)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: projectTags.map((tag) {
+            final isSelected = taskService.filterTags.contains(tag.name);
+            final tagColor = parseColor(tag.color);
+            return FilterChip(
+              label: Text(tag.name, style: const TextStyle(fontSize: 12)),
+              selected: isSelected,
+              selectedColor: tagColor.withValues(alpha: 0.3),
+              checkmarkColor: tagColor,
+              onSelected: (_) => taskService.toggleFilterTag(tag.name),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 

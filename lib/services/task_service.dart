@@ -6,6 +6,7 @@ import '../models/task.dart';
 import '../models/ritual.dart';
 import '../models/project.dart';
 import '../models/board.dart';
+import '../models/tag.dart';
 import '../common/constants.dart';
 
 /// Manages tasks, rituals, and projects with local storage using Hive.
@@ -13,10 +14,12 @@ class TaskService extends ChangeNotifier {
   late final Box<Task> _taskBox;
   late final Box<Ritual> _ritualBox;
   late final Box<Project> _projectBox;
+  late final Box<Tag> _tagBox;
 
   List<Task> _tasks = [];
   List<Ritual> _rituals = [];
   List<Project> _projects = [];
+  List<Tag> _tags = [];
 
   String? _selectedProjectId;
 
@@ -26,6 +29,7 @@ class TaskService extends ChangeNotifier {
   List<Task> get tasks => List.unmodifiable(_tasks);
   List<Ritual> get rituals => List.unmodifiable(_rituals);
   List<Project> get projects => List.unmodifiable(_projects);
+  List<Tag> get tags => List.unmodifiable(_tags);
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -50,6 +54,7 @@ class TaskService extends ChangeNotifier {
       _taskBox = await Hive.openBox<Task>('tasks');
       _ritualBox = await Hive.openBox<Ritual>('rituals');
       _projectBox = await Hive.openBox<Project>('projects');
+      _tagBox = await Hive.openBox<Tag>('tags');
 
       _loadData();
 
@@ -83,6 +88,7 @@ class TaskService extends ChangeNotifier {
       _tasks = _taskBox.values.toList();
       _rituals = _ritualBox.values.toList();
       _projects = _projectBox.values.toList();
+      _tags = _tagBox.values.toList();
       notifyListeners();
     } catch (e, stackTrace) {
       developer.log(
@@ -94,6 +100,7 @@ class TaskService extends ChangeNotifier {
       _tasks = [];
       _rituals = [];
       _projects = [];
+      _tags = [];
       notifyListeners();
     }
   }
@@ -272,6 +279,7 @@ class TaskService extends ChangeNotifier {
     String? description,
     TaskPriority? priority,
     String? projectId,
+    List<String>? tags,
   }) async {
     try {
       const uuid = Uuid();
@@ -299,6 +307,7 @@ class TaskService extends ChangeNotifier {
         createdAt: DateTime.now(),
         projectId: targetProjectId,
         taskKey: taskKey,
+        tags: tags ?? [],
       );
 
       await _taskBox.put(task.id, task);
@@ -760,7 +769,7 @@ class TaskService extends ChangeNotifier {
   String _searchQuery = '';
   TaskStatus? _filterStatus;
   TaskPriority? _filterPriority;
-  String? _filterTag;
+  Set<String> _filterTags = {};
   DateTime? _filterDueBefore;
   DateTime? _filterDueAfter;
   TaskSortBy _sortBy = TaskSortBy.createdAt;
@@ -769,7 +778,7 @@ class TaskService extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   TaskStatus? get filterStatus => _filterStatus;
   TaskPriority? get filterPriority => _filterPriority;
-  String? get filterTag => _filterTag;
+  Set<String> get filterTags => Set.unmodifiable(_filterTags);
   DateTime? get filterDueBefore => _filterDueBefore;
   DateTime? get filterDueAfter => _filterDueAfter;
   TaskSortBy get sortBy => _sortBy;
@@ -779,7 +788,7 @@ class TaskService extends ChangeNotifier {
       _searchQuery.isNotEmpty ||
       _filterStatus != null ||
       _filterPriority != null ||
-      _filterTag != null ||
+      _filterTags.isNotEmpty ||
       _filterDueBefore != null ||
       _filterDueAfter != null;
 
@@ -798,8 +807,17 @@ class TaskService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setFilterTag(String? tag) {
-    _filterTag = tag;
+  void toggleFilterTag(String tag) {
+    if (_filterTags.contains(tag)) {
+      _filterTags.remove(tag);
+    } else {
+      _filterTags.add(tag);
+    }
+    notifyListeners();
+  }
+
+  void clearFilterTags() {
+    _filterTags.clear();
     notifyListeners();
   }
 
@@ -827,7 +845,7 @@ class TaskService extends ChangeNotifier {
     _searchQuery = '';
     _filterStatus = null;
     _filterPriority = null;
-    _filterTag = null;
+    _filterTags = {};
     _filterDueBefore = null;
     _filterDueAfter = null;
     notifyListeners();
@@ -855,9 +873,10 @@ class TaskService extends ChangeNotifier {
           filtered.where((task) => task.priority == _filterPriority).toList();
     }
 
-    if (_filterTag != null) {
-      filtered =
-          filtered.where((task) => task.tags.contains(_filterTag)).toList();
+    if (_filterTags.isNotEmpty) {
+      filtered = filtered
+          .where((task) => _filterTags.every((tag) => task.tags.contains(tag)))
+          .toList();
     }
 
     if (_filterDueBefore != null) {
@@ -911,7 +930,119 @@ class TaskService extends ChangeNotifier {
     }
     return tags.toList()..sort();
   }
+
+  // Tag operations
+  List<Tag> getTagsForProject(String projectId) {
+    return _tags.where((t) => t.projectId == projectId).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  Tag? getTagByName(String name, String projectId) {
+    try {
+      return _tags.firstWhere(
+        (t) => t.name == name && t.projectId == projectId,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Tag?> addTag(
+    String name,
+    String color,
+    String projectId,
+  ) async {
+    try {
+      final existing = getTagByName(name, projectId);
+      if (existing != null) return null;
+
+      const uuid = Uuid();
+      final tag = Tag(
+        id: uuid.v4(),
+        name: name.trim(),
+        color: color,
+        projectId: projectId,
+      );
+
+      await _tagBox.put(tag.id, tag);
+      _tags.add(tag);
+      notifyListeners();
+      return tag;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to add tag: $name',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  Future<bool> updateTag(Tag tag) async {
+    try {
+      await _tagBox.put(tag.id, tag);
+      final index = _tags.indexWhere((t) => t.id == tag.id);
+      if (index != -1) {
+        final oldName = _tags[index].name;
+        _tags[index] = tag;
+
+        // Rename tag in all tasks if name changed
+        if (oldName != tag.name) {
+          for (final task in _tasks.where(
+            (t) => t.projectId == tag.projectId && t.tags.contains(oldName),
+          )) {
+            task.tags = task.tags
+                .map((t) => t == oldName ? tag.name : t)
+                .toList();
+            await _taskBox.put(task.id, task);
+          }
+        }
+      }
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to update tag: ${tag.id}',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> deleteTag(String tagId) async {
+    try {
+      final tag = _tags.firstWhere((t) => t.id == tagId);
+      final tagName = tag.name;
+      final projectId = tag.projectId;
+
+      // Remove tag from all tasks
+      for (final task in _tasks.where(
+        (t) => t.projectId == projectId && t.tags.contains(tagName),
+      )) {
+        task.tags = task.tags.where((t) => t != tagName).toList();
+        await _taskBox.put(task.id, task);
+      }
+
+      await _tagBox.delete(tagId);
+      _tags.removeWhere((t) => t.id == tagId);
+      _filterTags.remove(tagName);
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to delete tag: $tagId',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
 }
+
 
 enum TaskSortBy {
   createdAt,

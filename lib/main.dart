@@ -7,6 +7,7 @@ import 'themes/app_theme.dart';
 import 'models/board.dart';
 import 'models/project.dart';
 import 'models/ritual.dart';
+import 'models/tag.dart';
 import 'models/task.dart';
 import 'screens/home_screen.dart';
 import 'services/desktop_integration.dart';
@@ -27,12 +28,14 @@ void main() async {
   Hive.registerAdapter(BoardAdapter());
   Hive.registerAdapter(BoardColumnAdapter());
   Hive.registerAdapter(ProjectAdapter());
+  Hive.registerAdapter(TagAdapter());
 
   // Open boxes with error handling
   try {
     await Hive.openBox<Task>('tasks');
     await Hive.openBox<Ritual>('rituals');
     await Hive.openBox<Project>('projects');
+    await Hive.openBox<Tag>('tags');
     await Hive.openBox('settings');
   } on Exception catch (e) {
     debugPrint('Failed to open Hive boxes: $e');

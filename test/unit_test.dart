@@ -5,6 +5,7 @@ import 'package:photisnadi/models/task.dart';
 import 'package:photisnadi/models/ritual.dart';
 import 'package:photisnadi/models/board.dart';
 import 'package:photisnadi/models/project.dart';
+import 'package:photisnadi/models/tag.dart';
 import 'package:photisnadi/services/task_service.dart';
 import 'package:photisnadi/common/utils.dart';
 
@@ -20,6 +21,7 @@ void _registerAdapters() {
   Hive.registerAdapter(BoardAdapter());
   Hive.registerAdapter(BoardColumnAdapter());
   Hive.registerAdapter(ProjectAdapter());
+  Hive.registerAdapter(TagAdapter());
   _adaptersRegistered = true;
 }
 
@@ -996,6 +998,211 @@ void main() {
       taskService.addTaskDependency(task2!.id, task1.id);
 
       expect(taskService.canMoveTask(task2, TaskStatus.done), isTrue);
+    });
+  });
+
+  group('Tag Model Tests', () {
+    test('Tag creates successfully with valid data', () {
+      final tag = Tag(
+        id: '550e8400-e29b-41d4-a716-446655440040',
+        name: 'Bug',
+        color: '#E53935',
+        projectId: '550e8400-e29b-41d4-a716-446655440099',
+      );
+
+      expect(tag.name, 'Bug');
+      expect(tag.color, '#E53935');
+    });
+
+    test('Tag throws on invalid ID', () {
+      expect(
+        () => Tag(
+          id: 'invalid',
+          name: 'Bug',
+          color: '#E53935',
+          projectId: '550e8400-e29b-41d4-a716-446655440099',
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('Tag throws on empty name', () {
+      expect(
+        () => Tag(
+          id: '550e8400-e29b-41d4-a716-446655440040',
+          name: '   ',
+          color: '#E53935',
+          projectId: '550e8400-e29b-41d4-a716-446655440099',
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('Tag throws on invalid color', () {
+      expect(
+        () => Tag(
+          id: '550e8400-e29b-41d4-a716-446655440040',
+          name: 'Bug',
+          color: 'not-a-color',
+          projectId: '550e8400-e29b-41d4-a716-446655440099',
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('Tag throws on invalid projectId', () {
+      expect(
+        () => Tag(
+          id: '550e8400-e29b-41d4-a716-446655440040',
+          name: 'Bug',
+          color: '#E53935',
+          projectId: 'invalid',
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('Tag copyWith preserves fields', () {
+      final tag = Tag(
+        id: '550e8400-e29b-41d4-a716-446655440040',
+        name: 'Bug',
+        color: '#E53935',
+        projectId: '550e8400-e29b-41d4-a716-446655440099',
+      );
+
+      final copy = tag.copyWith(name: 'Feature');
+
+      expect(copy.name, 'Feature');
+      expect(copy.id, tag.id);
+      expect(copy.color, '#E53935');
+      expect(copy.projectId, tag.projectId);
+    });
+  });
+
+  group('Tag Service Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('should add tag to project', () async {
+      final project = await taskService.addProject('Test', 'TST');
+      final tag =
+          await taskService.addTag('Bug', '#E53935', project!.id);
+
+      expect(tag, isNotNull);
+      expect(tag!.name, 'Bug');
+      expect(taskService.tags.length, 1);
+    });
+
+    test('should not add duplicate tag name', () async {
+      final project = await taskService.addProject('Test', 'TST');
+      await taskService.addTag('Bug', '#E53935', project!.id);
+      final dup = await taskService.addTag('Bug', '#1E88E5', project.id);
+
+      expect(dup, isNull);
+      expect(taskService.tags.length, 1);
+    });
+
+    test('should get tags for project', () async {
+      final p1 = await taskService.addProject('P1', 'PA');
+      final p2 = await taskService.addProject('P2', 'PB');
+      await taskService.addTag('Bug', '#E53935', p1!.id);
+      await taskService.addTag('Feature', '#1E88E5', p1.id);
+      await taskService.addTag('Docs', '#43A047', p2!.id);
+
+      final p1Tags = taskService.getTagsForProject(p1.id);
+      final p2Tags = taskService.getTagsForProject(p2.id);
+
+      expect(p1Tags.length, 2);
+      expect(p2Tags.length, 1);
+    });
+
+    test('should delete tag and remove from tasks', () async {
+      final project = await taskService.addProject('Test', 'TST');
+      taskService.selectProject(project!.id);
+      final tag =
+          await taskService.addTag('Bug', '#E53935', project.id);
+      final task =
+          await taskService.addTask('Fix bug', tags: ['Bug']);
+
+      expect(task!.tags.contains('Bug'), isTrue);
+
+      await taskService.deleteTag(tag!.id);
+
+      expect(taskService.tags.length, 0);
+      final updatedTask =
+          taskService.tasks.firstWhere((t) => t.id == task.id);
+      expect(updatedTask.tags.contains('Bug'), isFalse);
+    });
+
+    test('should update tag and rename in tasks', () async {
+      final project = await taskService.addProject('Test', 'TST');
+      taskService.selectProject(project!.id);
+      final tag =
+          await taskService.addTag('Bug', '#E53935', project.id);
+      await taskService.addTask('Fix bug', tags: ['Bug']);
+
+      final updated = tag!.copyWith(name: 'Defect');
+      await taskService.updateTag(updated);
+
+      final updatedTask = taskService.tasks.first;
+      expect(updatedTask.tags.contains('Defect'), isTrue);
+      expect(updatedTask.tags.contains('Bug'), isFalse);
+    });
+
+    test('should get tag by name', () async {
+      final project = await taskService.addProject('Test', 'TST');
+      await taskService.addTag('Bug', '#E53935', project!.id);
+
+      final found = taskService.getTagByName('Bug', project.id);
+      final notFound = taskService.getTagByName('Feature', project.id);
+
+      expect(found, isNotNull);
+      expect(found!.name, 'Bug');
+      expect(notFound, isNull);
+    });
+
+    test('should filter tasks by multiple tags', () async {
+      final project = await taskService.addProject('Test', 'TST');
+      taskService.selectProject(project!.id);
+      await taskService.addTag('Bug', '#E53935', project.id);
+      await taskService.addTag('UI', '#1E88E5', project.id);
+
+      await taskService.addTask('Bug only', tags: ['Bug']);
+      await taskService.addTask('UI only', tags: ['UI']);
+      await taskService.addTask('Both', tags: ['Bug', 'UI']);
+
+      taskService.toggleFilterTag('Bug');
+      var filtered = taskService.getFilteredTasks(project.id);
+      expect(filtered.length, 2); // 'Bug only' + 'Both'
+
+      taskService.toggleFilterTag('UI');
+      filtered = taskService.getFilteredTasks(project.id);
+      expect(filtered.length, 1); // Only 'Both'
+
+      taskService.clearFilterTags();
+      filtered = taskService.getFilteredTasks(project.id);
+      expect(filtered.length, 3); // All tasks
+    });
+
+    test('should add task with tags', () async {
+      final project = await taskService.addProject('Test', 'TST');
+      taskService.selectProject(project!.id);
+      final task = await taskService.addTask(
+        'Tagged task',
+        tags: ['Bug', 'UI'],
+      );
+
+      expect(task!.tags, ['Bug', 'UI']);
     });
   });
 }
