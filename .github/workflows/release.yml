@@ -75,6 +75,7 @@ jobs:
       with:
         name: linux-release
         path: photisnadi-*-linux-x64.tar.gz
+        compression-level: 0
 
   build-windows:
     runs-on: windows-latest
@@ -99,6 +100,7 @@ jobs:
       with:
         name: windows-release
         path: photisnadi-*-windows-x64.zip
+        compression-level: 0
 
   build-macos:
     runs-on: macos-latest
@@ -121,6 +123,7 @@ jobs:
       with:
         name: macos-release
         path: photisnadi-*-macos-universal.zip
+        compression-level: 0
 
   build-web:
     runs-on: ubuntu-latest
@@ -142,6 +145,7 @@ jobs:
       with:
         name: web-release
         path: photisnadi-*-web.tar.gz
+        compression-level: 0
 
   build-container:
     runs-on: ubuntu-latest
