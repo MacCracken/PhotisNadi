@@ -45,14 +45,14 @@ jobs:
         else
           VERSION="${GITHUB_REF_NAME#v}"
         fi
-        # Validate version format (YYYY.M.D or YYYY.M.D.P)
-        if ! echo "${VERSION}" | grep -qE '^[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+        # Validate version format (YYYY.M.D or YYYY.M.D-P)
+        if ! echo "${VERSION}" | grep -qE '^[0-9]{4}\.[0-9]+\.[0-9]+(\-[0-9]+)?$'; then
           echo "::error::Invalid version format: ${VERSION}"
           exit 1
         fi
         echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-        # Convert YYYY.M.D[.P] → YYYYMMDD[P] for filenames
-        IFS='.' read -r Y M D P <<< "${VERSION}"
+        # Convert YYYY.M.D or YYYY.M.D-P → YYYYMMDD[P] for filenames
+        IFS='.-' read -r Y M D P <<< "${VERSION}"
         SLUG="$(printf '%04d%02d%02d' "$Y" "$M" "$D")${P:+$P}"
         echo "version_slug=${SLUG}" >> "$GITHUB_OUTPUT"
 
