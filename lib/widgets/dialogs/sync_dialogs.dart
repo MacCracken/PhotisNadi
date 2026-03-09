@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../services/supabase_config_service.dart';
 import '../../services/sync_service.dart';
 import '../../common/utils.dart';
 
@@ -22,14 +23,35 @@ class _SyncSettingsDialogState extends State<_SyncSettingsDialog> {
   @override
   Widget build(BuildContext context) {
     final syncService = context.watch<SyncService>();
+    final configService = context.watch<SupabaseConfigService>();
 
     if (!syncService.isInitialized) {
       return AlertDialog(
         title: const Text('Cloud Sync'),
-        content: const Text(
-          'Supabase is not configured. Run with:\n\n'
-          'flutter run --dart-define=SUPABASE_URL=<url> '
-          '--dart-define=SUPABASE_ANON_KEY=<key>',
+        content: SizedBox(
+          width: 360,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (configService.isConfigured) ...[
+                  // Configured but not initialized — show status
+                  const Text('Supabase credentials are saved but '
+                      'initialization failed. Try reconnecting.'),
+                  const SizedBox(height: 16),
+                  _DisconnectButton(configService: configService),
+                ] else ...[
+                  const Text(
+                    'Connect to Supabase to enable cloud sync across devices.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  _SupabaseConfigForm(),
+                ],
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -60,6 +82,8 @@ class _SyncSettingsDialogState extends State<_SyncSettingsDialog> {
                   _ConflictsSection(syncService: syncService),
                 ],
               ],
+              const Divider(height: 24),
+              _ConnectionInfo(configService: configService),
             ],
           ),
         ),
@@ -73,6 +97,216 @@ class _SyncSettingsDialogState extends State<_SyncSettingsDialog> {
     );
   }
 }
+
+// ── Supabase Configuration Form ──
+
+class _SupabaseConfigForm extends StatefulWidget {
+  @override
+  State<_SupabaseConfigForm> createState() => _SupabaseConfigFormState();
+}
+
+class _SupabaseConfigFormState extends State<_SupabaseConfigForm> {
+  final _urlController = TextEditingController();
+  final _keyController = TextEditingController();
+  bool _isTesting = false;
+  String? _error;
+  String? _success;
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _keyController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Supabase Credentials',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _urlController,
+          decoration: const InputDecoration(
+            labelText: 'Supabase URL',
+            hintText: 'https://your-project.supabase.co',
+            isDense: true,
+          ),
+          keyboardType: TextInputType.url,
+          enabled: !_isTesting,
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _keyController,
+          decoration: const InputDecoration(
+            labelText: 'Anon Key',
+            hintText: 'eyJ...',
+            isDense: true,
+          ),
+          obscureText: true,
+          enabled: !_isTesting,
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _error!,
+            style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+          ),
+        ],
+        if (_success != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _success!,
+            style: TextStyle(color: Colors.green.shade700, fontSize: 12),
+          ),
+        ],
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            ElevatedButton(
+              onPressed: _isTesting ? null : _connectAndSave,
+              child: _isTesting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Connect'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _connectAndSave() async {
+    final url = _urlController.text.trim();
+    final key = _keyController.text.trim();
+
+    if (url.isEmpty || key.isEmpty) {
+      setState(() {
+        _error = 'Both fields are required';
+        _success = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isTesting = true;
+      _error = null;
+      _success = null;
+    });
+
+    final configService = context.read<SupabaseConfigService>();
+    final error = await configService.testConnection(url, key);
+
+    if (error != null) {
+      if (mounted) {
+        setState(() {
+          _isTesting = false;
+          _error = error;
+        });
+      }
+      return;
+    }
+
+    // Test passed — save credentials
+    await configService.save(url, key);
+
+    // Initialize sync service now that Supabase is ready
+    if (mounted) {
+      final syncService = context.read<SyncService>();
+      await syncService.initialize();
+      setState(() {
+        _isTesting = false;
+        _success = 'Connected successfully';
+      });
+    }
+  }
+}
+
+// ── Connection Info & Disconnect ──
+
+class _ConnectionInfo extends StatelessWidget {
+  final SupabaseConfigService configService;
+
+  const _ConnectionInfo({required this.configService});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.link, size: 16, color: Colors.grey.shade600),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                configService.url ?? 'Build-time configuration',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        if (configService.isConfigured) ...[
+          const SizedBox(height: 8),
+          _DisconnectButton(configService: configService),
+        ],
+      ],
+    );
+  }
+}
+
+class _DisconnectButton extends StatelessWidget {
+  final SupabaseConfigService configService;
+
+  const _DisconnectButton({required this.configService});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () async {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Disconnect Supabase?'),
+            content: const Text(
+              'This will clear your saved credentials and disable cloud sync. '
+              'Your local data will not be affected.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Disconnect'),
+              ),
+            ],
+          ),
+        );
+        if ((confirm ?? false) && context.mounted) {
+          await configService.disconnect();
+          if (context.mounted) {
+            Navigator.pop(context); // Close sync dialog
+          }
+        }
+      },
+      icon: const Icon(Icons.link_off, size: 16),
+      label: const Text('Disconnect'),
+      style: TextButton.styleFrom(foregroundColor: Colors.red),
+    );
+  }
+}
+
+// ── Auth Section ──
 
 class _AuthSection extends StatefulWidget {
   @override
@@ -191,6 +425,8 @@ class _AuthSectionState extends State<_AuthSection> {
   }
 }
 
+// ── Account Section ──
+
 class _AccountSection extends StatelessWidget {
   final SyncService syncService;
 
@@ -225,6 +461,8 @@ class _AccountSection extends StatelessWidget {
     );
   }
 }
+
+// ── Sync Controls Section ──
 
 class _SyncControlsSection extends StatelessWidget {
   final SyncService syncService;
@@ -324,6 +562,8 @@ class _SyncControlsSection extends StatelessWidget {
         '${dt.minute.toString().padLeft(2, '0')}';
   }
 }
+
+// ── Conflicts Section ──
 
 class _ConflictsSection extends StatelessWidget {
   final SyncService syncService;

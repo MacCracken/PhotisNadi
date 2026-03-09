@@ -13,8 +13,6 @@ services:
       - PHOTISNADI_API_KEY=${PHOTISNADI_API_KEY:-}
       - PHOTISNADI_API_PORT=8081
       - PHOTISNADI_DATA_DIR=/opt/photisnadi/data
-      - SUPABASE_URL=${SUPABASE_URL:-}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
     volumes:
       - photisnadi-data:/opt/photisnadi/data
     restart: unless-stopped

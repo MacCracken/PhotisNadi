@@ -20,6 +20,12 @@ All notable changes to Photis Nadi will be documented in this file.
   - Supabase fallback: auto-retries via Supabase if REST API is unreachable (optional)
   - `@supabase/supabase-js` moved to optional dependency
   - Server version bumped to 2.0.0
+- Supabase runtime configuration:
+  - `SupabaseConfigService` — manages Supabase credentials via `flutter_secure_storage`
+  - Configuration form in sync dialog (URL + anon key with connection test)
+  - Runtime credentials take priority, compile-time env vars as fallback
+  - Disconnect option clears credentials and reverts to offline-only mode
+  - New dependency: `flutter_secure_storage` ^9.2.4
 - Performance profiling:
   - `PerformanceMonitor` singleton utility with `measure`/`measureAsync` helpers
   - Auto-reports on init, slow-operation detection (>50ms threshold)
@@ -65,6 +71,7 @@ All notable changes to Photis Nadi will be documented in this file.
 - `lib/server/auth.dart` — API key authentication middleware
 - `lib/server/serializers.dart` — JSON serialization helpers
 - `lib/common/validators.dart` — Model validation utilities (hex colors, UUIDs, project keys)
+- `lib/services/supabase_config_service.dart` — Runtime Supabase credential management
 - `lib/common/performance_monitor.dart` — Performance profiling utility
 - `lib/services/mixins/project_mixin.dart` — Project management mixin
 - `lib/services/mixins/task_crud_mixin.dart` — Task CRUD mixin

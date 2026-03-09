@@ -286,10 +286,10 @@ class YeomanService extends ChangeNotifier {
   // ── MCP Tool Registration ──
 
   /// Register Photis Nadi MCP tools in SecureYeoman.
-  /// Requires Supabase URL and service role key for direct DB access.
+  /// Uses the Photisnadi REST API for data access.
   Future<bool> registerMcpTools({
-    required String supabaseUrl,
-    required String supabaseServiceKey,
+    required String apiUrl,
+    required String apiKey,
   }) async {
     if (!isConnected) return false;
 
@@ -379,10 +379,10 @@ class YeomanService extends ChangeNotifier {
           'name': 'Photis Nadi',
           'description': 'Task management and ritual tracking from Photis Nadi',
           'transport': 'streamable-http',
-          'url': supabaseUrl,
+          'url': apiUrl,
           'env': {
-            'SUPABASE_URL': supabaseUrl,
-            'SUPABASE_SERVICE_KEY': supabaseServiceKey,
+            'PHOTISNADI_API_URL': apiUrl,
+            'PHOTISNADI_API_KEY': apiKey,
           },
           'enabled': true,
           'tools': tools,

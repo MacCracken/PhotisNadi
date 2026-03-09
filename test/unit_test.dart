@@ -1942,8 +1942,8 @@ void main() {
       );
 
       final result = await yeomanService.registerMcpTools(
-        supabaseUrl: 'https://my-project.supabase.co',
-        supabaseServiceKey: 'service-key-123',
+        apiUrl: 'http://photisnadi:8081',
+        apiKey: 'test-api-key-123',
       );
 
       expect(result, true);

@@ -29,8 +29,12 @@ RUN flutter pub get
 COPY . .
 RUN flutter build web --release
 
-# Compile the REST API server to a native binary (no Dart runtime needed)
-RUN dart compile exe bin/server.dart -o build/server
+# Compile the REST API server to a native binary (no Dart runtime needed).
+# Remove flutter_secure_storage first — it has build hooks incompatible with
+# dart compile exe, and the server doesn't use it.
+RUN sed -i '/flutter_secure_storage/d' pubspec.yaml \
+    && flutter pub get \
+    && dart compile exe bin/server.dart -o build/server
 
 # ---------------------------------------------------------------------------
 # Stage 2: Serve on agnosticos with Caddy + API server

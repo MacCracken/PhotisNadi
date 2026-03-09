@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'themes/app_theme.dart';
 import 'models/board.dart';
 import 'models/project.dart';
@@ -12,6 +11,7 @@ import 'models/tag.dart';
 import 'models/task.dart';
 import 'screens/home_screen.dart';
 import 'services/notification_service.dart';
+import 'services/supabase_config_service.dart';
 import 'services/sync_service.dart';
 import 'services/task_service.dart';
 import 'services/theme_service.dart';
@@ -44,21 +44,11 @@ void main() async {
     debugPrint('Failed to open Hive boxes: $e');
   }
 
-  // Initialize Supabase (optional — sync works only when configured)
-  const supabaseUrl = String.fromEnvironment(
-    'SUPABASE_URL',
-    defaultValue: '',
-  );
-  const supabaseAnonKey = String.fromEnvironment(
-    'SUPABASE_ANON_KEY',
-    defaultValue: '',
-  );
-  if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
-    await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
-    );
-  }
+  // Load Supabase credentials from secure storage (configured at runtime via UI)
+  final configService = SupabaseConfigService();
+  final hasStoredCreds = await configService.load();
+  final supabaseConfigured =
+      hasStoredCreds && await configService.initializeSupabase();
 
   // Initialize desktop integration (not on web)
   if (!kIsWeb && isDesktop()) {
@@ -66,14 +56,20 @@ void main() async {
   }
 
   runApp(PhotisNadiApp(
-    supabaseConfigured: supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty,
+    supabaseConfigured: supabaseConfigured,
+    configService: configService,
   ));
 }
 
 class PhotisNadiApp extends StatelessWidget {
   final bool supabaseConfigured;
+  final SupabaseConfigService configService;
 
-  const PhotisNadiApp({super.key, this.supabaseConfigured = false});
+  const PhotisNadiApp({
+    super.key,
+    this.supabaseConfigured = false,
+    required this.configService,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +77,7 @@ class PhotisNadiApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => TaskService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
+        ChangeNotifierProvider.value(value: configService),
         ChangeNotifierProvider(create: (_) {
           final notificationService = NotificationService();
           if (!kIsWeb) {
