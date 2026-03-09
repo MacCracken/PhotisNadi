@@ -30,7 +30,8 @@ jobs:
     - name: Check formatting
       run: dart format --set-exit-if-changed lib/ test/
 
-  test:
+  unit-test:
+    name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -39,7 +40,32 @@ jobs:
       with:
         channel: 'stable'
     - run: flutter pub get
-    - run: flutter test
+    - run: flutter test test/unit_test.dart
+
+  widget-test:
+    name: Widget Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+    - run: flutter pub get
+    - run: flutter test test/widget_test.dart
+
+  e2e-test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: hashFiles('test/e2e_test.dart') != ''
+    steps:
+    - uses: actions/checkout@v4
+    - uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+    - run: flutter pub get
+    - run: flutter test test/e2e_test.dart
 
   security:
     name: Security Checks
@@ -98,7 +124,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-format, test, security]
+    needs: [lint-format, unit-test, widget-test, security]
     steps:
     - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
@@ -121,7 +147,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     timeout-minutes: 30
-    needs: [lint-format, test, security]
+    needs: [lint-format, unit-test, widget-test, security]
     steps:
     - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
@@ -140,7 +166,7 @@ jobs:
   build-macos:
     runs-on: macos-latest
     timeout-minutes: 30
-    needs: [lint-format, test, security]
+    needs: [lint-format, unit-test, widget-test, security]
     steps:
     - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
@@ -159,7 +185,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lint-format, test, security]
+    needs: [lint-format, unit-test, widget-test, security]
     steps:
     - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
@@ -178,7 +204,7 @@ jobs:
   build-docker:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-format, test, security]
+    needs: [lint-format, unit-test, widget-test, security]
     steps:
     - uses: actions/checkout@v4
     - name: Set up Docker Buildx

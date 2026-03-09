@@ -16,11 +16,15 @@ Future<void> initDesktop() async {
 /// No-op on web.
 void openFile(String path) {
   if (kIsWeb) return;
+  // Reject paths containing shell metacharacters to prevent command injection.
+  if (RegExp(r'[;&|`$]').hasMatch(path)) return;
   if (Platform.isLinux) {
     Process.run('xdg-open', [path]);
   } else if (Platform.isMacOS) {
     Process.run('open', [path]);
   } else if (Platform.isWindows) {
-    Process.run('start', [path], runInShell: true);
+    // Use explorer.exe instead of 'start' to avoid runInShell: true,
+    // which exposes command injection risk from user-influenced paths.
+    Process.run('explorer.exe', [path]);
   }
 }
