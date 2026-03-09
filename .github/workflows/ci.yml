@@ -58,14 +58,25 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: hashFiles('test/e2e_test.dart') != ''
     steps:
     - uses: actions/checkout@v4
+    - name: Check for E2E tests
+      id: check
+      run: |
+        if [ -f test/e2e_test.dart ]; then
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          echo "No e2e_test.dart found — skipping"
+        fi
     - uses: subosito/flutter-action@v2
+      if: steps.check.outputs.exists == 'true'
       with:
         channel: 'stable'
     - run: flutter pub get
+      if: steps.check.outputs.exists == 'true'
     - run: flutter test test/e2e_test.dart
+      if: steps.check.outputs.exists == 'true'
 
   security:
     name: Security Checks
