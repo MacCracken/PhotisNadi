@@ -1,0 +1,10 @@
+build/
+.dart_tool/
+.packages
+.pub/
+.github/
+test/
+docs/
+*.md
+.git/
+.gitignore

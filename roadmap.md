@@ -78,6 +78,6 @@ Cross-platform productivity app combining Kanban-style task management with dail
 - [ ] **MCP tool registration in SecureYeoman** — Photisnadi's 6 MCP tools need to be registered in SecureYeoman's `packages/mcp/src/tools/manifest.ts` via `registerApiProxyTool()`. Feature-gated via `exposePhotisnadiTools`.
 - [ ] **Dashboard widget** — `PhotosnadiWidget.tsx` showing task counts and ritual streaks in SecureYeoman dashboard.
 
-### Not Applicable
+### Completed
 
-- **AGNOS Docker base** — No Docker component (Flutter client-only). Not a candidate for agnosticos migration.
+- [x] **AGNOS Docker base** — Multi-stage Dockerfile on `ghcr.io/maccracken/agnosticos:latest`, serves Flutter web via darkhttpd, includes Linux native binary. Docker Compose setup with health checks. GHCR push on release.
