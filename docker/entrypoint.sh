@@ -6,7 +6,7 @@ case "${1:-web}" in
     # Start API server in background (if API key is set)
     if [ -n "$PHOTISNADI_API_KEY" ]; then
       echo "Starting Photis Nadi API server on port ${PHOTISNADI_API_PORT:-8081}..."
-      /opt/photisnadi/server &
+      /opt/photisnadi/server_bundle/bin/server &
       API_PID=$!
       # Shut down API server when entrypoint exits
       trap "kill $API_PID 2>/dev/null" EXIT
@@ -19,7 +19,7 @@ case "${1:-web}" in
     ;;
   api)
     echo "Running Photis Nadi API server only..."
-    exec /opt/photisnadi/server
+    exec /opt/photisnadi/server_bundle/bin/server
     ;;
   linux)
     shift

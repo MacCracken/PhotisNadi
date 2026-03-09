@@ -226,12 +226,12 @@ Router buildApiRouter({
 
   // ── Rituals ──
 
-  router.get('/api/v1/rituals', (Request request) {
+  router.get('/api/v1/rituals', (Request request) async {
     var items = rituals.values.toList();
 
     // Reset rituals that need it
     for (final ritual in items) {
-      ritual.resetIfNeeded();
+      await ritual.resetIfNeeded();
     }
 
     final frequency = request.url.queryParameters['frequency'];

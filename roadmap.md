@@ -7,13 +7,12 @@ Cross-platform productivity app combining Kanban-style task management with dail
 
 ---
 
-## Planned Features
+## Engineering Backlog
 
-### Supabase Runtime Configuration
-- [x] **Settings UI for Supabase credentials** — Configuration form in sync dialog; URL + anon key fields with connect button
-- [x] **Runtime credential loading** — `SupabaseConfigService` loads from `flutter_secure_storage`, falls back to compile-time env vars
-- [x] **Connection test** — Validates URL format and Supabase initialization before saving
-- [x] **Disconnect option** — Clears credentials from secure storage, signs out, reverts to offline-only
+### Test Coverage
+- **Current**: 43.4% (1490/3436 lines, 210 tests)
+- **Target**: 60%
+- **Well-covered**: Models, validators, export/import, filter/sort, theme service
+- **Gaps**: Widget tests, sync service integration, API endpoint handlers, dialog flows
 
 ---
-

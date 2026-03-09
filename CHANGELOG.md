@@ -49,6 +49,24 @@ All notable changes to Photis Nadi will be documented in this file.
   - Web build artifact
   - Docker build-only validation with GHA cache
 - 16 new tests (154 total: 138 unit, 16 widget)
+- Code audit: 56 new tests (210 total), coverage 37.3% → 43.4%
+  - Validator tests (hex color, UUID, project key validation)
+  - Ritual model tests (markCompleted, resetIfNeeded lifecycle)
+  - Board model tests (constructors, templates, column management)
+  - Filter/sort tests (search, status/priority filters, sort modes)
+  - Export/import tests (JSON round-trip, CSV export, escaping)
+  - ThemeService tests (defaults, accent color enum)
+  - SyncService model tests (SyncConflict, SyncException, configs)
+
+### Fixed
+- `Ritual.markCompleted()` and `resetIfNeeded()` now async with `await save()` (data was not persisting)
+- `TaskCrudMixin.addTaskDependency/removeTaskDependency` now async with `await task.save()`
+- `SyncService` auth state subscription stored and cancelled in `dispose()` (memory leak)
+- `SyncService._mergeRituals()` conflict detection using `lastCompleted`/`createdAt` timestamps
+- Task dialog callbacks use `context.mounted` guard after async operations
+- API rituals endpoint properly awaits `resetIfNeeded()`
+- Docker build: switched from `dart compile exe` to `dart build cli` (build hooks support)
+- Linux CI: added `libsecret-1-dev` dependency for `flutter_secure_storage`
 
 ### Changed
 - TaskService (1131 lines) decomposed into 6 focused mixins:

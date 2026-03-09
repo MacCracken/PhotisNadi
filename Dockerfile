@@ -29,12 +29,9 @@ RUN flutter pub get
 COPY . .
 RUN flutter build web --release
 
-# Compile the REST API server to a native binary (no Dart runtime needed).
-# Remove flutter_secure_storage first — it has build hooks incompatible with
-# dart compile exe, and the server doesn't use it.
-RUN sed -i '/flutter_secure_storage/d' pubspec.yaml \
-    && flutter pub get \
-    && dart compile exe bin/server.dart -o build/server
+# Compile the REST API server to a native binary.
+# Uses 'dart build cli' which supports build hooks (unlike 'dart compile exe').
+RUN dart build cli --target bin/server.dart -o build/server_bundle
 
 # ---------------------------------------------------------------------------
 # Stage 2: Serve on agnosticos with Caddy + API server
@@ -55,10 +52,10 @@ RUN mkdir -p /opt/photisnadi/web /opt/photisnadi/data \
     && chown -R agnos:agnos /opt/photisnadi
 
 COPY --from=builder /build/build/web/ /opt/photisnadi/web/
-COPY --from=builder /build/build/server /opt/photisnadi/server
+COPY --from=builder /build/build/server_bundle/bundle/ /opt/photisnadi/server_bundle/
 COPY docker/Caddyfile /opt/photisnadi/Caddyfile
 COPY docker/entrypoint.sh /opt/photisnadi/entrypoint.sh
-RUN chmod +x /opt/photisnadi/entrypoint.sh /opt/photisnadi/server
+RUN chmod +x /opt/photisnadi/entrypoint.sh /opt/photisnadi/server_bundle/bin/server
 
 EXPOSE 8080 8081
 

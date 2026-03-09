@@ -95,7 +95,7 @@ mixin TaskCrudMixin on ChangeNotifier {
 
   // ── Task Dependencies ──
 
-  bool addTaskDependency(String taskId, String dependsOnTaskId) {
+  Future<bool> addTaskDependency(String taskId, String dependsOnTaskId) async {
     try {
       final task = taskRepo.get(taskId);
       if (task == null) return false;
@@ -105,7 +105,7 @@ mixin TaskCrudMixin on ChangeNotifier {
 
       task.dependsOn = [...task.dependsOn, dependsOnTaskId];
       task.modifiedAt = DateTime.now();
-      task.save();
+      await task.save();
       notifyListeners();
       return true;
     } catch (e) {
@@ -113,14 +113,14 @@ mixin TaskCrudMixin on ChangeNotifier {
     }
   }
 
-  bool removeTaskDependency(String taskId, String dependsOnTaskId) {
+  Future<bool> removeTaskDependency(String taskId, String dependsOnTaskId) async {
     try {
       final task = taskRepo.get(taskId);
       if (task == null) return false;
       task.dependsOn =
           task.dependsOn.where((id) => id != dependsOnTaskId).toList();
       task.modifiedAt = DateTime.now();
-      task.save();
+      await task.save();
       notifyListeners();
       return true;
     } catch (e) {

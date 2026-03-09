@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_test/hive_test.dart';
@@ -11,6 +12,8 @@ import 'package:photisnadi/services/sync_service.dart';
 import 'package:photisnadi/services/yeoman_service.dart';
 import 'package:photisnadi/services/theme_service.dart';
 import 'package:photisnadi/common/utils.dart';
+import 'package:photisnadi/common/validators.dart';
+import 'package:photisnadi/services/export_import_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
@@ -889,7 +892,7 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      final result = taskService.addTaskDependency(task2!.id, task1!.id);
+      final result = await taskService.addTaskDependency(task2!.id, task1!.id);
 
       expect(result, isTrue);
       expect(task2.dependsOn.contains(task1.id), isTrue);
@@ -898,7 +901,7 @@ void main() {
     test('should not add self dependency', () async {
       final task = await taskService.addTask('Task 1');
 
-      final result = taskService.addTaskDependency(task!.id, task.id);
+      final result = await taskService.addTaskDependency(task!.id, task.id);
 
       expect(result, isFalse);
     });
@@ -907,8 +910,8 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      taskService.addTaskDependency(task2!.id, task1!.id);
-      final result = taskService.addTaskDependency(task2.id, task1.id);
+      await taskService.addTaskDependency(task2!.id, task1!.id);
+      final result = await taskService.addTaskDependency(task2.id, task1.id);
 
       expect(result, isFalse);
     });
@@ -917,8 +920,8 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      taskService.addTaskDependency(task2!.id, task1!.id);
-      final result = taskService.addTaskDependency(task1.id, task2.id);
+      await taskService.addTaskDependency(task2!.id, task1!.id);
+      final result = await taskService.addTaskDependency(task1.id, task2.id);
 
       expect(result, isFalse);
     });
@@ -927,8 +930,8 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      taskService.addTaskDependency(task2!.id, task1!.id);
-      final result = taskService.removeTaskDependency(task2.id, task1.id);
+      await taskService.addTaskDependency(task2!.id, task1!.id);
+      final result = await taskService.removeTaskDependency(task2.id, task1.id);
 
       expect(result, isTrue);
       expect(task2.dependsOn.contains(task1.id), isFalse);
@@ -938,7 +941,7 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      taskService.addTaskDependency(task2!.id, task1!.id);
+      await taskService.addTaskDependency(task2!.id, task1!.id);
       final deps = taskService.getTaskDependencies(task2.id);
 
       expect(deps.length, 1);
@@ -949,7 +952,7 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      taskService.addTaskDependency(task2!.id, task1!.id);
+      await taskService.addTaskDependency(task2!.id, task1!.id);
       final dependents = taskService.getDependentTasks(task1.id);
 
       expect(dependents.length, 1);
@@ -960,7 +963,7 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      taskService.addTaskDependency(task2!.id, task1!.id);
+      await taskService.addTaskDependency(task2!.id, task1!.id);
 
       expect(taskService.isTaskBlocked(task2), isTrue);
     });
@@ -971,7 +974,7 @@ void main() {
       await taskService.updateTask(task1);
 
       final task2 = await taskService.addTask('Task 2');
-      taskService.addTaskDependency(task2!.id, task1.id);
+      await taskService.addTaskDependency(task2!.id, task1.id);
 
       expect(taskService.isTaskBlocked(task2), isFalse);
     });
@@ -980,7 +983,7 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      taskService.addTaskDependency(task2!.id, task1!.id);
+      await taskService.addTaskDependency(task2!.id, task1!.id);
       await taskService.deleteTask(task1.id);
 
       expect(task2.dependsOn.contains(task1.id), isFalse);
@@ -990,7 +993,7 @@ void main() {
       final task1 = await taskService.addTask('Task 1');
       final task2 = await taskService.addTask('Task 2');
 
-      taskService.addTaskDependency(task2!.id, task1!.id);
+      await taskService.addTaskDependency(task2!.id, task1!.id);
 
       expect(taskService.canMoveTask(task2, TaskStatus.done), isFalse);
     });
@@ -1001,7 +1004,7 @@ void main() {
       await taskService.updateTask(task1);
 
       final task2 = await taskService.addTask('Task 2');
-      taskService.addTaskDependency(task2!.id, task1.id);
+      await taskService.addTaskDependency(task2!.id, task1.id);
 
       expect(taskService.canMoveTask(task2, TaskStatus.done), isTrue);
     });
@@ -2422,6 +2425,597 @@ void main() {
       expect(task.estimatedMinutes, null);
       expect(task.trackedMinutes, 0);
       expect(task.recurrence, null);
+    });
+  });
+
+  // ── Validator Tests ──
+
+  group('Validator Tests', () {
+    test('isValidHexColor accepts valid colors', () {
+      expect(isValidHexColor('#FF0000'), isTrue);
+      expect(isValidHexColor('#ff0000'), isTrue);
+      expect(isValidHexColor('FF0000'), isTrue);
+      expect(isValidHexColor('#FF000080'), isTrue); // 8-char RGBA
+    });
+
+    test('isValidHexColor rejects invalid colors', () {
+      expect(isValidHexColor(''), isFalse);
+      expect(isValidHexColor('#FFF'), isFalse); // 3-char
+      expect(isValidHexColor('#GGGGGG'), isFalse);
+      expect(isValidHexColor('not-a-color'), isFalse);
+    });
+
+    test('normalizeHexColor normalizes formats', () {
+      expect(normalizeHexColor('ff0000'), '#FF0000');
+      expect(normalizeHexColor('#ff0000'), '#FF0000');
+      expect(normalizeHexColor('  #ff0000  '), '#FF0000');
+    });
+
+    test('isValidProjectKey validates keys', () {
+      expect(isValidProjectKey('AB'), isTrue);
+      expect(isValidProjectKey('ABCDE'), isTrue);
+      expect(isValidProjectKey('A1'), isTrue);
+      expect(isValidProjectKey(''), isFalse);
+      expect(isValidProjectKey('A'), isFalse); // too short
+      expect(isValidProjectKey('ABCDEF'), isFalse); // too long
+      expect(isValidProjectKey('ab'), isFalse); // lowercase
+      expect(isValidProjectKey('A B'), isFalse); // space
+    });
+
+    test('isValidUuid validates UUIDs', () {
+      expect(isValidUuid('550e8400-e29b-41d4-a716-446655440000'), isTrue);
+      expect(isValidUuid('not-a-uuid'), isFalse);
+      expect(isValidUuid(''), isFalse);
+    });
+
+    test('capitalizeFirst works correctly', () {
+      expect(capitalizeFirst('hello'), 'Hello');
+      expect(capitalizeFirst(''), '');
+      expect(capitalizeFirst('a'), 'A');
+      expect(capitalizeFirst('Hello'), 'Hello');
+    });
+
+    test('generateProjectKey generates correct keys', () {
+      expect(generateProjectKey('My Project'), 'MP');
+      expect(generateProjectKey('A Big Cool Project'), 'ABC');
+      expect(generateProjectKey('Solo'), 'SOL');
+      expect(generateProjectKey('Hi'), 'HI');
+      expect(generateProjectKey('A'), 'A');
+      expect(generateProjectKey(''), '');
+      expect(generateProjectKey('   '), '');
+    });
+  });
+
+  // ── Utils Tests ──
+
+  group('Utils Tests', () {
+    test('parseColor parses valid hex colors', () {
+      final color = parseColor('#FF0000');
+      expect(color.value, isNonZero);
+    });
+
+    test('parseColor returns blue for invalid input', () {
+      final color = parseColor('not-a-color');
+      expect(color, Colors.blue);
+    });
+
+    test('parseColor handles missing hash prefix', () {
+      final color = parseColor('FF0000');
+      expect(color.value, isNonZero);
+    });
+
+    test('formatDate formats correctly', () {
+      final date = DateTime(2026, 3, 9);
+      expect(formatDate(date), '9/3/2026');
+    });
+
+    test('formatPriority formats all priorities', () {
+      expect(formatPriority(TaskPriority.low), 'Low');
+      expect(formatPriority(TaskPriority.medium), 'Medium');
+      expect(formatPriority(TaskPriority.high), 'High');
+    });
+
+    test('formatStatus formats all statuses', () {
+      expect(formatStatus(TaskStatus.todo), 'Todo');
+      expect(formatStatus(TaskStatus.inProgress), 'InProgress');
+      expect(formatStatus(TaskStatus.done), 'Done');
+    });
+
+    test('getPriorityColor returns correct colors', () {
+      expect(getPriorityColor(TaskPriority.high), Colors.red);
+      expect(getPriorityColor(TaskPriority.medium), Colors.orange);
+      expect(getPriorityColor(TaskPriority.low), Colors.green);
+    });
+  });
+
+  // ── Ritual Model Tests ──
+
+  group('Ritual Model Tests', () {
+    test('markCompleted updates fields', () async {
+      await setUpTestHive();
+      _registerAdapters();
+      final box = await Hive.openBox<Ritual>('rituals');
+      final ritual = Ritual(
+        id: '550e8400-e29b-41d4-a716-446655440060',
+        title: 'Test Ritual',
+        createdAt: DateTime.now(),
+      );
+      await box.put(ritual.id, ritual);
+
+      await ritual.markCompleted();
+
+      expect(ritual.isCompleted, isTrue);
+      expect(ritual.lastCompleted, isNotNull);
+      expect(ritual.streakCount, 1);
+      await tearDownTestHive();
+    });
+
+    test('resetIfNeeded resets daily ritual next day', () async {
+      await setUpTestHive();
+      _registerAdapters();
+      final box = await Hive.openBox<Ritual>('rituals');
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final ritual = Ritual(
+        id: '550e8400-e29b-41d4-a716-446655440061',
+        title: 'Daily Ritual',
+        createdAt: yesterday,
+        isCompleted: true,
+        resetTime: yesterday,
+        frequency: RitualFrequency.daily,
+      );
+      await box.put(ritual.id, ritual);
+
+      await ritual.resetIfNeeded();
+
+      expect(ritual.isCompleted, isFalse);
+      expect(ritual.resetTime, isNotNull);
+      await tearDownTestHive();
+    });
+
+    test('resetIfNeeded does not reset same day', () async {
+      await setUpTestHive();
+      _registerAdapters();
+      final box = await Hive.openBox<Ritual>('rituals');
+      final ritual = Ritual(
+        id: '550e8400-e29b-41d4-a716-446655440062',
+        title: 'Daily Ritual',
+        createdAt: DateTime.now(),
+        isCompleted: true,
+        resetTime: DateTime.now(),
+        frequency: RitualFrequency.daily,
+      );
+      await box.put(ritual.id, ritual);
+
+      await ritual.resetIfNeeded();
+
+      expect(ritual.isCompleted, isTrue); // Not reset
+      await tearDownTestHive();
+    });
+
+    test('resetIfNeeded resets weekly ritual next week', () async {
+      await setUpTestHive();
+      _registerAdapters();
+      final box = await Hive.openBox<Ritual>('rituals');
+      final lastWeek = DateTime.now().subtract(const Duration(days: 8));
+      final ritual = Ritual(
+        id: '550e8400-e29b-41d4-a716-446655440063',
+        title: 'Weekly Ritual',
+        createdAt: lastWeek,
+        isCompleted: true,
+        resetTime: lastWeek,
+        frequency: RitualFrequency.weekly,
+      );
+      await box.put(ritual.id, ritual);
+
+      await ritual.resetIfNeeded();
+
+      expect(ritual.isCompleted, isFalse);
+      await tearDownTestHive();
+    });
+
+    test('resetIfNeeded resets monthly ritual next month', () async {
+      await setUpTestHive();
+      _registerAdapters();
+      final box = await Hive.openBox<Ritual>('rituals');
+      final lastMonth = DateTime(
+        DateTime.now().year,
+        DateTime.now().month - 1,
+        DateTime.now().day,
+      );
+      final ritual = Ritual(
+        id: '550e8400-e29b-41d4-a716-446655440064',
+        title: 'Monthly Ritual',
+        createdAt: lastMonth,
+        isCompleted: true,
+        resetTime: lastMonth,
+        frequency: RitualFrequency.monthly,
+      );
+      await box.put(ritual.id, ritual);
+
+      await ritual.resetIfNeeded();
+
+      expect(ritual.isCompleted, isFalse);
+      await tearDownTestHive();
+    });
+
+    test('weekNumber calculates correctly', () {
+      // Jan 1 2026 is a Thursday
+      expect(Ritual.weekNumber(DateTime(2026, 1, 1)), 1);
+      expect(Ritual.weekNumber(DateTime(2026, 1, 8)), 2);
+    });
+
+    test('copyWith creates copy with overrides', () {
+      final ritual = Ritual(
+        id: '550e8400-e29b-41d4-a716-446655440065',
+        title: 'Original',
+        createdAt: DateTime(2026, 1, 1),
+      );
+      final copy = ritual.copyWith(title: 'Updated');
+      expect(copy.title, 'Updated');
+      expect(copy.id, ritual.id);
+    });
+  });
+
+  // ── Board Model Tests ──
+
+  group('Board Model Tests', () {
+    test('Board creates with valid data', () {
+      final board = Board(
+        id: '550e8400-e29b-41d4-a716-446655440070',
+        title: 'Test Board',
+        createdAt: DateTime.now(),
+      );
+      expect(board.title, 'Test Board');
+    });
+
+    test('Board rejects empty ID', () {
+      expect(
+        () => Board(id: '', title: 'Test', createdAt: DateTime.now()),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('Board rejects empty title', () {
+      expect(
+        () => Board(
+          id: '550e8400-e29b-41d4-a716-446655440071',
+          title: '',
+          createdAt: DateTime.now(),
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('Board.defaultBoard creates valid board', () {
+      final board = Board.defaultBoard('test-id');
+      expect(board.title, 'Default');
+      expect(board.columns.length, 5);
+    });
+
+    test('Board.bugTracking template has correct columns', () {
+      final board = Board.bugTracking('test-id');
+      expect(board.title, 'Bug Tracking');
+      expect(board.columns.any((c) => c.title == 'New'), isTrue);
+    });
+
+    test('Board.sprint template has correct columns', () {
+      final board = Board.sprint('test-id');
+      expect(board.title, 'Sprint');
+      expect(board.columns.any((c) => c.title == 'Backlog'), isTrue);
+    });
+
+    test('BoardColumn creates correctly', () {
+      final col = BoardColumn(
+        id: '550e8400-e29b-41d4-a716-446655440072',
+        title: 'Test',
+        status: TaskStatus.todo,
+      );
+      expect(col.title, 'Test');
+      expect(col.status, TaskStatus.todo);
+    });
+  });
+
+  // ── Filter/Sort Tests ──
+
+  group('Filter and Sort Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('setSearchQuery updates and notifies', () {
+      int notifyCount = 0;
+      taskService.addListener(() => notifyCount++);
+      taskService.setSearchQuery('test');
+      expect(taskService.searchQuery, 'test');
+      expect(notifyCount, 1);
+    });
+
+    test('setFilterStatus updates and notifies', () {
+      taskService.setFilterStatus(TaskStatus.todo);
+      expect(taskService.filterStatus, TaskStatus.todo);
+    });
+
+    test('setFilterPriority updates and notifies', () {
+      taskService.setFilterPriority(TaskPriority.high);
+      expect(taskService.filterPriority, TaskPriority.high);
+    });
+
+    test('toggleFilterTag adds and removes tags', () {
+      taskService.toggleFilterTag('bug');
+      expect(taskService.filterTags.contains('bug'), isTrue);
+      taskService.toggleFilterTag('bug');
+      expect(taskService.filterTags.contains('bug'), isFalse);
+    });
+
+    test('clearFilterTags clears all tags', () {
+      taskService.toggleFilterTag('bug');
+      taskService.toggleFilterTag('feature');
+      taskService.clearFilterTags();
+      expect(taskService.filterTags, isEmpty);
+    });
+
+    test('setFilterDueBefore updates filter', () {
+      final date = DateTime(2026, 12, 31);
+      taskService.setFilterDueBefore(date);
+      expect(taskService.filterDueBefore, date);
+    });
+
+    test('setFilterDueAfter updates filter', () {
+      final date = DateTime(2026, 1, 1);
+      taskService.setFilterDueAfter(date);
+      expect(taskService.filterDueAfter, date);
+    });
+
+    test('setSortBy toggles ascending on same sort', () {
+      taskService.setSortBy(TaskSortBy.title);
+      expect(taskService.sortBy, TaskSortBy.title);
+      expect(taskService.sortAscending, isFalse);
+      taskService.setSortBy(TaskSortBy.title);
+      expect(taskService.sortAscending, isTrue);
+    });
+
+    test('setSortBy resets ascending on different sort', () {
+      taskService.setSortBy(TaskSortBy.title);
+      taskService.setSortBy(TaskSortBy.priority);
+      expect(taskService.sortBy, TaskSortBy.priority);
+      expect(taskService.sortAscending, isFalse);
+    });
+
+    test('clearFilters resets all filters', () {
+      taskService.setSearchQuery('test');
+      taskService.setFilterStatus(TaskStatus.todo);
+      taskService.setFilterPriority(TaskPriority.high);
+      taskService.toggleFilterTag('bug');
+      taskService.setFilterDueBefore(DateTime.now());
+      taskService.setFilterDueAfter(DateTime.now());
+      expect(taskService.hasActiveFilters, isTrue);
+
+      taskService.clearFilters();
+      expect(taskService.hasActiveFilters, isFalse);
+      expect(taskService.searchQuery, '');
+      expect(taskService.filterStatus, isNull);
+      expect(taskService.filterPriority, isNull);
+      expect(taskService.filterTags, isEmpty);
+      expect(taskService.filterDueBefore, isNull);
+      expect(taskService.filterDueAfter, isNull);
+    });
+
+    test('getFilteredTasks filters by search query', () async {
+      final project = await taskService.addProject('Test', 'TE');
+      await taskService.addTask('Alpha task', projectId: project!.id);
+      await taskService.addTask('Beta task', projectId: project.id);
+
+      taskService.setSearchQuery('alpha');
+      final results = taskService.getFilteredTasks(project.id);
+      expect(results.length, 1);
+      expect(results.first.title, 'Alpha task');
+    });
+
+    test('getFilteredTasks filters by status', () async {
+      final project = await taskService.addProject('Test', 'TE');
+      final task = await taskService.addTask('Task', projectId: project!.id);
+      task!.status = TaskStatus.done;
+      await taskService.updateTask(task);
+
+      taskService.setFilterStatus(TaskStatus.done);
+      final results = taskService.getFilteredTasks(project.id);
+      expect(results.length, 1);
+    });
+
+    test('getFilteredTasks filters by priority', () async {
+      final project = await taskService.addProject('Test', 'TE');
+      await taskService.addTask('Task', projectId: project!.id, priority: TaskPriority.high);
+      await taskService.addTask('Task2', projectId: project.id, priority: TaskPriority.low);
+
+      taskService.setFilterPriority(TaskPriority.high);
+      final results = taskService.getFilteredTasks(project.id);
+      expect(results.length, 1);
+    });
+
+    test('getFilteredTasks sorts by title', () async {
+      final project = await taskService.addProject('Test', 'TE');
+      await taskService.addTask('Charlie', projectId: project!.id);
+      await taskService.addTask('Alpha', projectId: project.id);
+      await taskService.addTask('Bravo', projectId: project.id);
+
+      taskService.setSortBy(TaskSortBy.title);
+      taskService.setSortBy(TaskSortBy.title); // ascending
+      final results = taskService.getFilteredTasks(project.id);
+      expect(results[0].title, 'Alpha');
+      expect(results[1].title, 'Bravo');
+      expect(results[2].title, 'Charlie');
+    });
+
+    test('getFilteredTasks sorts by due date with nulls last', () async {
+      final project = await taskService.addProject('Test', 'TE');
+      await taskService.addTask('No date', projectId: project!.id);
+      await taskService.addTask('Has date', projectId: project.id, dueDate: DateTime(2026, 6, 1));
+
+      taskService.setSortBy(TaskSortBy.dueDate);
+      taskService.setSortBy(TaskSortBy.dueDate); // ascending
+      final results = taskService.getFilteredTasks(project.id);
+      expect(results.first.title, 'Has date');
+      expect(results.last.title, 'No date');
+    });
+  });
+
+  // ── Export/Import Tests ──
+
+  group('Export Import Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('exportAllJson produces valid JSON', () async {
+      await taskService.addProject('Test Project', 'TP');
+      await taskService.addTask('Task 1');
+      await taskService.addRitual('Daily Ritual');
+
+      final json = ExportImportService.exportAllJson(taskService);
+      final data = jsonDecode(json) as Map<String, dynamic>;
+
+      expect(data['version'], 1);
+      expect(data['exported_at'], isNotNull);
+      expect(data['projects'], isA<List>());
+      expect((data['projects'] as List).length, greaterThanOrEqualTo(1));
+      expect(data['tasks'], isA<List>());
+      expect((data['tasks'] as List).length, greaterThanOrEqualTo(1));
+      expect(data['rituals'], isA<List>());
+      expect((data['rituals'] as List).length, greaterThanOrEqualTo(1));
+    });
+
+    test('exportProjectJson exports single project', () async {
+      final project = await taskService.addProject('Test Project', 'TP');
+      await taskService.addTask('Task 1', projectId: project!.id);
+      await taskService.addTask('Task 2', projectId: project.id);
+
+      final json = ExportImportService.exportProjectJson(taskService, project.id);
+      final data = jsonDecode(json) as Map<String, dynamic>;
+
+      expect((data['projects'] as List).length, 1);
+      expect((data['tasks'] as List).length, 2);
+    });
+
+    test('exportTasksCsv produces valid CSV', () async {
+      await taskService.addTask('Test Task');
+
+      final csv = ExportImportService.exportTasksCsv(taskService);
+      final lines = csv.trim().split('\n');
+
+      expect(lines.length, 2); // header + 1 task
+      expect(lines[0], contains('Key,Title,Status'));
+      expect(lines[1], contains('Test Task'));
+    });
+
+    test('exportTasksCsv escapes commas in values', () async {
+      await taskService.addTask('Task, with comma');
+
+      final csv = ExportImportService.exportTasksCsv(taskService);
+      expect(csv, contains('"Task, with comma"'));
+    });
+
+    test('importJson round-trips with exportAllJson', () async {
+      await taskService.addProject('Test Project', 'TP');
+      await taskService.addTask('Task 1');
+      await taskService.addRitual('Ritual 1');
+
+      final exported = ExportImportService.exportAllJson(taskService);
+
+      // Create a fresh service
+      await tearDownTestHive();
+      await setUpTestHive();
+      _registerAdapters();
+      final freshService = TaskService();
+      await freshService.init();
+
+      final summary = await ExportImportService.importJson(freshService, exported);
+      expect(summary.projects, greaterThanOrEqualTo(1));
+      expect(summary.tasks, greaterThanOrEqualTo(1));
+      expect(summary.rituals, greaterThanOrEqualTo(1));
+      expect(freshService.projects.length, greaterThanOrEqualTo(1));
+      expect(freshService.tasks.length, greaterThanOrEqualTo(1));
+      expect(freshService.rituals.length, greaterThanOrEqualTo(1));
+    });
+
+    test('ImportSummary toString formats correctly', () {
+      const summary = ImportSummary(projects: 2, tasks: 5, rituals: 3, tags: 1);
+      expect(summary.toString(), 'Imported 2 projects, 5 tasks, 3 rituals, 1 tags');
+    });
+  });
+
+  // ── ThemeService Tests ──
+
+  group('ThemeService Tests', () {
+    test('default values are correct', () {
+      final service = ThemeService();
+      expect(service.isEReaderMode, isFalse);
+      expect(service.isDarkMode, isFalse);
+      expect(service.accentColor, AccentColor.indigo);
+      expect(service.layoutDensity, LayoutDensity.comfortable);
+      expect(service.isCompact, isFalse);
+    });
+
+    test('AccentColor enum has correct labels', () {
+      expect(AccentColor.indigo.label, 'Indigo');
+      expect(AccentColor.teal.label, 'Teal');
+      expect(AccentColor.rose.label, 'Rose');
+    });
+
+    test('AccentColor enum has non-zero colors', () {
+      for (final color in AccentColor.values) {
+        expect(color.color.value, isNonZero);
+      }
+    });
+  });
+
+  // ── SyncService Model Tests ──
+
+  group('SyncService Models Tests', () {
+    test('SyncConflict creates correctly', () {
+      final conflict = SyncConflict(
+        entityType: 'task',
+        entityId: 'test-id',
+        entityTitle: 'Test Task',
+        localModifiedAt: DateTime(2026, 1, 1),
+        remoteModifiedAt: DateTime(2026, 1, 2),
+        localData: {'title': 'local'},
+        remoteData: {'title': 'remote'},
+      );
+      expect(conflict.entityType, 'task');
+      expect(conflict.entityTitle, 'Test Task');
+    });
+
+    test('SyncException toString formats correctly', () {
+      final ex = SyncException('test error', cause: 'root cause');
+      expect(ex.toString(), 'SyncException: test error');
+    });
+
+    test('RetryConfig has expected defaults', () {
+      expect(RetryConfig.maxRetries, 3);
+      expect(RetryConfig.initialDelay, const Duration(seconds: 1));
+    });
+
+    test('NetworkConfig has expected defaults', () {
+      expect(NetworkConfig.requestTimeout, const Duration(seconds: 30));
+      expect(NetworkConfig.connectionTimeout, const Duration(seconds: 10));
     });
   });
 }

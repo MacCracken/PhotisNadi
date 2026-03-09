@@ -226,6 +226,7 @@ class SyncService extends ChangeNotifier {
   bool _isInitialized = false;
   final List<RealtimeChannel> _channels = [];
   Timer? _periodicSyncTimer;
+  StreamSubscription<AuthState>? _authSubscription;
 
   // Sync status
   SyncState _syncState = SyncState.idle;
@@ -266,7 +267,7 @@ class SyncService extends ChangeNotifier {
       }
 
       // Listen to auth state changes
-      _supabase.auth.onAuthStateChange.listen((data) {
+      _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
         notifyListeners();
         if (data.event == AuthChangeEvent.signedIn && _isSyncEnabled) {
           syncAll();
@@ -778,15 +779,33 @@ class SyncService extends ChangeNotifier {
     final localMap = {for (var r in localRituals) r.id: r};
     final remoteMap = {for (var r in remoteRituals) r.id: r};
 
+    // Upload local-only rituals
     for (final ritual in localRituals) {
       if (!remoteMap.containsKey(ritual.id)) {
         await _uploadRitual(ritual, userId);
       }
     }
 
+    // Download remote-only rituals
     for (final ritual in remoteRituals) {
       if (!localMap.containsKey(ritual.id)) {
         await _ritualBox.put(ritual.id, ritual);
+      }
+    }
+
+    // Resolve conflicts using createdAt comparison (rituals lack modifiedAt)
+    for (final ritual in localRituals) {
+      if (remoteMap.containsKey(ritual.id)) {
+        final remoteRitual = remoteMap[ritual.id]!;
+        // For rituals, use lastCompleted or createdAt as proxy for modification
+        final localTime = ritual.lastCompleted ?? ritual.createdAt;
+        final remoteTime = remoteRitual.lastCompleted ?? remoteRitual.createdAt;
+
+        if (remoteTime.isAfter(localTime)) {
+          await _ritualBox.put(ritual.id, remoteRitual);
+        } else if (localTime.isAfter(remoteTime)) {
+          await _uploadRitual(ritual, userId);
+        }
       }
     }
   }
@@ -1076,6 +1095,7 @@ class SyncService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     _cleanupChannels();
     _stopPeriodicSync();
     super.dispose();

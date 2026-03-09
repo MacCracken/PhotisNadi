@@ -52,14 +52,14 @@ class Ritual extends HiveObject {
     }
   }
 
-  void markCompleted() {
+  Future<void> markCompleted() async {
     isCompleted = true;
     lastCompleted = DateTime.now();
     streakCount++;
-    save();
+    await save();
   }
 
-  void resetIfNeeded() {
+  Future<void> resetIfNeeded() async {
     final now = DateTime.now();
     final lastReset = resetTime ?? createdAt;
 
@@ -86,7 +86,7 @@ class Ritual extends HiveObject {
     if (shouldReset && isCompleted) {
       isCompleted = false;
       resetTime = now;
-      save();
+      await save();
     }
   }
 

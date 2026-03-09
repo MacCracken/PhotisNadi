@@ -441,8 +441,8 @@ void showEditTaskDialog(BuildContext context, Task task) {
                     return Chip(
                       label: Text(dep.taskKey ?? dep.title),
                       deleteIcon: const Icon(Icons.close, size: 16),
-                      onDeleted: () {
-                        taskService.removeTaskDependency(task.id, dep.id);
+                      onDeleted: () async {
+                        await taskService.removeTaskDependency(task.id, dep.id);
                         setDialogState(() {});
                       },
                     );
@@ -467,10 +467,10 @@ void showEditTaskDialog(BuildContext context, Task task) {
                             child: Text(t.taskKey ?? t.title),
                           )),
                 ],
-                onChanged: (value) {
+                onChanged: (value) async {
                   if (value != null) {
-                    final added = taskService.addTaskDependency(task.id, value);
-                    if (!added) {
+                    final added = await taskService.addTaskDependency(task.id, value);
+                    if (!added && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(

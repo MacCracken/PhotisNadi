@@ -10,7 +10,7 @@ mixin RitualMixin on ChangeNotifier {
   Future<void> checkRitualResets() async {
     try {
       for (final ritual in ritualRepo.all) {
-        ritual.resetIfNeeded();
+        await ritual.resetIfNeeded();
       }
     } catch (e, stackTrace) {
       developer.log(
@@ -67,7 +67,7 @@ mixin RitualMixin on ChangeNotifier {
       final ritual = ritualRepo.get(ritualId);
       if (ritual == null) return false;
       if (!ritual.isCompleted) {
-        ritual.markCompleted();
+        await ritual.markCompleted();
       } else {
         ritual.isCompleted = false;
         await ritual.save();
