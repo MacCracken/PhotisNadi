@@ -3,10 +3,11 @@ set -e
 
 case "${1:-web}" in
   web)
-    echo "Serving Photis Nadi web on port ${PORT:-8080}..."
-    exec darkhttpd /opt/photisnadi/web --port "${PORT:-8080}" --addr 0.0.0.0
+    echo "Serving Photis Nadi web on port 8080 via Caddy..."
+    exec caddy run --config /opt/photisnadi/Caddyfile --adapter caddyfile
     ;;
   linux)
+    shift
     echo "Running Photis Nadi Linux binary..."
     exec /opt/photisnadi/linux/photisnadi "$@"
     ;;

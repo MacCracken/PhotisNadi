@@ -1,0 +1,16 @@
+:8080 {
+	root * /opt/photisnadi/web
+	file_server
+
+	# SPA fallback — serve index.html for unmatched routes
+	try_files {path} /index.html
+
+	# Cache static assets
+	@static path *.js *.css *.woff2 *.png *.svg *.ico
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	log {
+		output stderr
+		format json
+	}
+}
