@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags:
+      - 'v[0-9][0-9][0-9][0-9].[0-9]*'
       - '[0-9][0-9][0-9][0-9].[0-9]*'
   workflow_dispatch:
     inputs:
@@ -33,15 +34,21 @@ jobs:
     needs: [ci]
     outputs:
       version: ${{ steps.version.outputs.version }}
+      version_slug: ${{ steps.version.outputs.version_slug }}
     steps:
     - name: Determine version
       id: version
       run: |
         if [ -n "${{ github.event.inputs.version }}" ]; then
-          echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          VERSION="${{ github.event.inputs.version }}"
         else
-          echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          VERSION="${GITHUB_REF_NAME#v}"
         fi
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+        # Convert YYYY.M.D[.P] → YYYYMMDD[P] for filenames
+        IFS='.' read -r Y M D P <<< "${VERSION}"
+        SLUG="$(printf '%04d%02d%02d' "$Y" "$M" "$D")${P:+$P}"
+        echo "version_slug=${SLUG}" >> "$GITHUB_OUTPUT"
 
   build-linux:
     runs-on: ubuntu-latest
@@ -60,7 +67,7 @@ jobs:
       run: flutter build linux --release
     - name: Package Linux bundle
       run: |
-        VERSION="${{ needs.version.outputs.version }}"
+        VERSION="${{ needs.version.outputs.version_slug }}"
         tar -czf "photisnadi-${VERSION}-linux-x64.tar.gz" \
           -C build/linux/x64/release bundle
     - name: Upload artifact
@@ -83,7 +90,7 @@ jobs:
     - name: Package Windows bundle
       shell: pwsh
       run: |
-        $version = "${{ needs.version.outputs.version }}"
+        $version = "${{ needs.version.outputs.version_slug }}"
         Compress-Archive `
           -Path "build\windows\x64\runner\Release\*" `
           -DestinationPath "photisnadi-${version}-windows-x64.zip"
@@ -106,7 +113,7 @@ jobs:
       run: flutter build macos --release
     - name: Package macOS app
       run: |
-        VERSION="${{ needs.version.outputs.version }}"
+        VERSION="${{ needs.version.outputs.version_slug }}"
         cd build/macos/Build/Products/Release
         zip -r "${GITHUB_WORKSPACE}/photisnadi-${VERSION}-macos-universal.zip" *.app
     - name: Upload artifact
@@ -128,7 +135,7 @@ jobs:
       run: flutter build web --release
     - name: Package web build
       run: |
-        VERSION="${{ needs.version.outputs.version }}"
+        VERSION="${{ needs.version.outputs.version_slug }}"
         tar -czf "photisnadi-${VERSION}-web.tar.gz" -C build web
     - name: Upload artifact
       uses: actions/upload-artifact@v4
