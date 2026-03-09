@@ -118,6 +118,7 @@ jobs:
           -Path "build\windows\x64\runner\Release\*" `
           -DestinationPath "photisnadi-${env:VERSION_SLUG}-windows-x64.zip"
     - name: Upload to release
+      shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
         RELEASE_VERSION: ${{ needs.version.outputs.version }}
