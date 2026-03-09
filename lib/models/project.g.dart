@@ -28,9 +28,12 @@ class ProjectAdapter extends TypeAdapter<Project> {
       isArchived: fields[8] as bool,
       modifiedAt: fields[9] as DateTime?,
       columns: (fields[10] as List?)?.cast<BoardColumn>(),
-      sharedWith: fields.containsKey(11) ? (fields[11] as List).cast<String>() : [],
+      sharedWith:
+          fields.containsKey(11) ? (fields[11] as List).cast<String>() : [],
       ownerId: fields.containsKey(12) ? fields[12] as String? : null,
-      boards: fields.containsKey(13) ? (fields[13] as List?)?.cast<Board>() ?? [] : [],
+      boards: fields.containsKey(13)
+          ? (fields[13] as List?)?.cast<Board>() ?? []
+          : [],
       activeBoardId: fields.containsKey(14) ? fields[14] as String? : null,
     );
   }

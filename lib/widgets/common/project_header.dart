@@ -53,7 +53,8 @@ class ProjectHeader extends StatelessWidget {
               await _doExport(
                 context,
                 'tasks.csv',
-                ExportImportService.exportTasksCsv(taskService, projectId: project!.id),
+                ExportImportService.exportTasksCsv(taskService,
+                    projectId: project!.id),
               );
             },
             child: const Text('Export Project Tasks as CSV'),
@@ -81,7 +82,8 @@ class ProjectHeader extends StatelessWidget {
     );
   }
 
-  Future<void> _doExport(BuildContext context, String defaultName, String content) async {
+  Future<void> _doExport(
+      BuildContext context, String defaultName, String content) async {
     try {
       final path = await FilePicker.platform.saveFile(
         dialogTitle: 'Save Export',
@@ -98,7 +100,8 @@ class ProjectHeader extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Export failed: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -122,7 +125,8 @@ class ProjectHeader extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Import failed: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -242,10 +246,9 @@ class _BoardSelector extends StatelessWidget {
       return Row(
         children: [
           Chip(
-            label: Text(boards.first.title,
-                style: const TextStyle(fontSize: 12)),
-            backgroundColor:
-                Theme.of(context).colorScheme.primaryContainer,
+            label:
+                Text(boards.first.title, style: const TextStyle(fontSize: 12)),
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           ),
           const SizedBox(width: 4),
           IconButton(
@@ -267,11 +270,10 @@ class _BoardSelector extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 4),
               child: GestureDetector(
-                onLongPress: () =>
-                    showEditBoardDialog(context, project, board),
+                onLongPress: () => showEditBoardDialog(context, project, board),
                 child: ChoiceChip(
-                  label: Text(board.title,
-                      style: const TextStyle(fontSize: 12)),
+                  label:
+                      Text(board.title, style: const TextStyle(fontSize: 12)),
                   selected: board.id == activeBoard?.id,
                   onSelected: (_) => taskService.selectBoard(board.id),
                 ),

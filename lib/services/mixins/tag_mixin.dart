@@ -63,7 +63,8 @@ mixin TagMixin on ChangeNotifier {
       if (oldName != null && oldName != tag.name) {
         for (final task in taskRepo.getByProject(tag.projectId)) {
           if (task.tags.contains(oldName)) {
-            task.tags = task.tags.map((t) => t == oldName ? tag.name : t).toList();
+            task.tags =
+                task.tags.map((t) => t == oldName ? tag.name : t).toList();
             await taskRepo.put(task);
           }
         }

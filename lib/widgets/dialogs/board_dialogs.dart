@@ -130,7 +130,8 @@ void showDeleteBoardDialog(BuildContext context, Project project, Board board) {
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: const Text('Delete Board'),
-      content: Text('Delete "${board.title}"? Tasks will remain in the project.'),
+      content:
+          Text('Delete "${board.title}"? Tasks will remain in the project.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext),

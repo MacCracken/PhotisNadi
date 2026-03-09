@@ -16,7 +16,8 @@ Middleware apiKeyAuth(String apiKey) {
       final authHeader = request.headers['authorization'];
       if (authHeader == null || !authHeader.startsWith('Bearer ')) {
         return Response(401,
-            body: jsonEncode({'error': 'Missing or invalid Authorization header'}),
+            body: jsonEncode(
+                {'error': 'Missing or invalid Authorization header'}),
             headers: {'content-type': 'application/json'});
       }
 

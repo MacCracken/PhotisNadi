@@ -59,7 +59,8 @@ class PerformanceMonitor {
 
     final buffer = StringBuffer('\n=== Performance Report ===\n');
     final sorted = _metrics.entries.toList()
-      ..sort((a, b) => b.value.totalMicroseconds.compareTo(a.value.totalMicroseconds));
+      ..sort((a, b) =>
+          b.value.totalMicroseconds.compareTo(a.value.totalMicroseconds));
 
     for (final entry in sorted) {
       final m = entry.value;

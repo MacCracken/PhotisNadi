@@ -40,7 +40,8 @@ class ExportImportService {
       };
       return const JsonEncoder.withIndent('  ').convert(data);
     } catch (e, stackTrace) {
-      developer.log('Failed to export all JSON', name: 'ExportImport', error: e, stackTrace: stackTrace);
+      developer.log('Failed to export all JSON',
+          name: 'ExportImport', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }
@@ -61,7 +62,8 @@ class ExportImportService {
       };
       return const JsonEncoder.withIndent('  ').convert(data);
     } catch (e, stackTrace) {
-      developer.log('Failed to export project JSON', name: 'ExportImport', error: e, stackTrace: stackTrace);
+      developer.log('Failed to export project JSON',
+          name: 'ExportImport', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }
@@ -104,7 +106,8 @@ class ExportImportService {
 
       return buffer.toString();
     } catch (e, stackTrace) {
-      developer.log('Failed to export CSV', name: 'ExportImport', error: e, stackTrace: stackTrace);
+      developer.log('Failed to export CSV',
+          name: 'ExportImport', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }
@@ -171,7 +174,8 @@ class ExportImportService {
       if (data['rituals'] != null) {
         for (final map in data['rituals'] as List) {
           final ritual = RitualParsing.fromMap(map as Map<String, dynamic>);
-          await service.addRitual(ritual.title, description: ritual.description);
+          await service.addRitual(ritual.title,
+              description: ritual.description);
           rituals++;
         }
       }
@@ -183,7 +187,8 @@ class ExportImportService {
         tags: tags,
       );
     } catch (e, stackTrace) {
-      developer.log('Failed to import JSON', name: 'ExportImport', error: e, stackTrace: stackTrace);
+      developer.log('Failed to import JSON',
+          name: 'ExportImport', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }

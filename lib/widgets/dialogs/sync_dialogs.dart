@@ -384,9 +384,8 @@ class _AuthSectionState extends State<_AuthSection> {
                         _isSignUp = !_isSignUp;
                         _error = null;
                       }),
-              child: Text(_isSignUp
-                  ? 'Already have an account?'
-                  : 'Create account'),
+              child: Text(
+                  _isSignUp ? 'Already have an account?' : 'Create account'),
             ),
           ],
         ),
@@ -674,7 +673,8 @@ class _ConflictTile extends StatelessWidget {
                     conflict,
                     ConflictResolution.keepLocal,
                   ),
-                  child: const Text('Keep Local', style: TextStyle(fontSize: 12)),
+                  child:
+                      const Text('Keep Local', style: TextStyle(fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 TextButton(
@@ -682,7 +682,8 @@ class _ConflictTile extends StatelessWidget {
                     conflict,
                     ConflictResolution.keepRemote,
                   ),
-                  child: const Text('Keep Remote', style: TextStyle(fontSize: 12)),
+                  child:
+                      const Text('Keep Remote', style: TextStyle(fontSize: 12)),
                 ),
               ],
             ),

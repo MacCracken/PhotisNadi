@@ -43,10 +43,7 @@ class TagRepository extends HiveRepository<Tag> {
   List<Tag> getByProject(String projectId) {
     final ids = _projectIndex[projectId];
     if (ids == null || ids.isEmpty) return [];
-    return ids
-        .map(get)
-        .whereType<Tag>()
-        .toList()
+    return ids.map(get).whereType<Tag>().toList()
       ..sort((a, b) => a.name.compareTo(b.name));
   }
 

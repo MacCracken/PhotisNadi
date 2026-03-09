@@ -85,10 +85,11 @@ class TaskRepository extends HiveRepository<Task> {
   }
 
   /// Remove all dependency references to a deleted task.
-  void removeDependencyReferences(String taskId) {
+  Future<void> removeDependencyReferences(String taskId) async {
     for (final task in all) {
       if (task.dependsOn.contains(taskId)) {
         task.dependsOn = task.dependsOn.where((id) => id != taskId).toList();
+        await put(task);
       }
     }
   }

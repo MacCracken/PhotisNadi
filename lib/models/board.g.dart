@@ -23,7 +23,9 @@ class BoardAdapter extends TypeAdapter<Board> {
       createdAt: fields[3] as DateTime,
       columnIds: (fields[4] as List).cast<String>(),
       color: fields[5] as String,
-      columns: fields.containsKey(6) ? (fields[6] as List?)?.cast<BoardColumn>() ?? [] : [],
+      columns: fields.containsKey(6)
+          ? (fields[6] as List?)?.cast<BoardColumn>() ?? []
+          : [],
     );
   }
 

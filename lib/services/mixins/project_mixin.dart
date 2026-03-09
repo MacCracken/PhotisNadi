@@ -139,7 +139,8 @@ mixin ProjectMixin on ChangeNotifier {
   Future<bool> unshareProject(String projectId, String userId) async {
     final project = projectRepo.get(projectId);
     if (project == null) return false;
-    project.sharedWith = project.sharedWith.where((id) => id != userId).toList();
+    project.sharedWith =
+        project.sharedWith.where((id) => id != userId).toList();
     project.modifiedAt = DateTime.now();
     await projectRepo.put(project);
     notifyListeners();

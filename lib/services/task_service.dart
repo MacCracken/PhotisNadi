@@ -23,7 +23,13 @@ export 'mixins/filter_sort_mixin.dart' show TaskSortBy;
 
 /// Manages tasks, rituals, and projects with local storage using Hive.
 class TaskService extends ChangeNotifier
-    with ProjectMixin, TaskCrudMixin, FilterSortMixin, ColumnMixin, RitualMixin, TagMixin {
+    with
+        ProjectMixin,
+        TaskCrudMixin,
+        FilterSortMixin,
+        ColumnMixin,
+        RitualMixin,
+        TagMixin {
   final TaskRepository _taskRepo;
   final ProjectRepository _projectRepo;
   final RitualRepository _ritualRepo;
@@ -103,7 +109,8 @@ class TaskService extends ChangeNotifier
 
   Future<void> _createDefaultProject() async {
     try {
-      await addProject('My Project', 'MP', description: 'Default project for tasks');
+      await addProject('My Project', 'MP',
+          description: 'Default project for tasks');
     } catch (e, stackTrace) {
       developer.log(
         'Failed to create default project',
@@ -149,7 +156,8 @@ class TaskService extends ChangeNotifier
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log('Failed to add board', name: 'TaskService', error: e, stackTrace: stackTrace);
+      developer.log('Failed to add board',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
@@ -158,13 +166,15 @@ class TaskService extends ChangeNotifier
     try {
       final project = projectRepo.get(projectId);
       if (project == null) return false;
-      project.boards = project.boards.map((b) => b.id == board.id ? board : b).toList();
+      project.boards =
+          project.boards.map((b) => b.id == board.id ? board : b).toList();
       project.modifiedAt = DateTime.now();
       await projectRepo.put(project);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log('Failed to update board', name: 'TaskService', error: e, stackTrace: stackTrace);
+      developer.log('Failed to update board',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
@@ -184,7 +194,8 @@ class TaskService extends ChangeNotifier
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log('Failed to delete board', name: 'TaskService', error: e, stackTrace: stackTrace);
+      developer.log('Failed to delete board',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
@@ -200,9 +211,8 @@ class TaskService extends ChangeNotifier
   }
 
   List<Task> getTasksForColumn(String columnId, {String? projectId}) {
-    final project = projectId != null
-        ? _projectRepo.get(projectId)
-        : selectedProject;
+    final project =
+        projectId != null ? _projectRepo.get(projectId) : selectedProject;
     if (project == null) return [];
 
     final column = project.activeColumns.firstWhere(
@@ -210,7 +220,8 @@ class TaskService extends ChangeNotifier
       orElse: () => project.activeColumns.first,
     );
 
-    return _taskRepo.getByProject(projectId ?? selectedProjectId)
+    return _taskRepo
+        .getByProject(projectId ?? selectedProjectId)
         .where((task) => task.status == column.status)
         .toList();
   }
@@ -227,7 +238,8 @@ class TaskService extends ChangeNotifier
     int page = 0,
     int pageSize = AppConstants.defaultPageSize,
   }) {
-    return PerformanceMonitor.measure('TaskService.getTasksForColumnPaginated', () {
+    return PerformanceMonitor.measure('TaskService.getTasksForColumnPaginated',
+        () {
       final allTasks = hasActiveFilters && projectId != null
           ? _getTasksForColumnFiltered(columnId, projectId)
           : getTasksForColumn(columnId, projectId: projectId);

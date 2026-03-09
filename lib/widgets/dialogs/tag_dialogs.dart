@@ -108,8 +108,7 @@ class _TagManagementDialogState extends State<_TagManagementDialog> {
                             size: 18,
                             color: Colors.red.shade400,
                           ),
-                          onPressed: () =>
-                              _confirmDeleteTag(context, tag),
+                          onPressed: () => _confirmDeleteTag(context, tag),
                         ),
                       ],
                     ),
@@ -177,8 +176,8 @@ class _TagManagementDialogState extends State<_TagManagementDialog> {
                             : null,
                       ),
                       child: isSelected
-                          ? const Icon(Icons.check, size: 16,
-                              color: Colors.white)
+                          ? const Icon(Icons.check,
+                              size: 16, color: Colors.white)
                           : null,
                     ),
                   );
@@ -275,8 +274,8 @@ class _TagManagementDialogState extends State<_TagManagementDialog> {
                             : null,
                       ),
                       child: isSelected
-                          ? const Icon(Icons.check, size: 16,
-                              color: Colors.white)
+                          ? const Icon(Icons.check,
+                              size: 16, color: Colors.white)
                           : null,
                     ),
                   );

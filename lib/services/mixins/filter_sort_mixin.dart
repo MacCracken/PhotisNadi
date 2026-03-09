@@ -110,11 +110,13 @@ mixin FilterSortMixin on ChangeNotifier {
     }
 
     if (_filterStatus != null) {
-      filtered = filtered.where((task) => task.status == _filterStatus).toList();
+      filtered =
+          filtered.where((task) => task.status == _filterStatus).toList();
     }
 
     if (_filterPriority != null) {
-      filtered = filtered.where((task) => task.priority == _filterPriority).toList();
+      filtered =
+          filtered.where((task) => task.priority == _filterPriority).toList();
     }
 
     if (_filterTags.isNotEmpty) {

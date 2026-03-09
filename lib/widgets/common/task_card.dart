@@ -38,9 +38,8 @@ class TaskCard extends StatelessWidget {
     final marginV = compact
         ? AppConstants.cardMarginVerticalCompact
         : AppConstants.cardMarginVertical;
-    final padding = compact
-        ? AppConstants.cardPaddingCompact
-        : AppConstants.cardPadding;
+    final padding =
+        compact ? AppConstants.cardPaddingCompact : AppConstants.cardPadding;
     final descMaxLines = compact
         ? AppConstants.descriptionMaxLinesCompact
         : AppConstants.descriptionMaxLines;
@@ -124,7 +123,8 @@ class TaskCard extends StatelessWidget {
                       const SizedBox(height: AppConstants.tinyPadding),
                       _buildSubtaskProgress(task, compact),
                     ],
-                    if (task.trackedMinutes > 0 || task.estimatedMinutes != null) ...[
+                    if (task.trackedMinutes > 0 ||
+                        task.estimatedMinutes != null) ...[
                       const SizedBox(height: AppConstants.tinyPadding),
                       _buildTimeIndicator(task, compact),
                     ],
@@ -133,7 +133,9 @@ class TaskCard extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.repeat, size: compact ? 10 : 12, color: Colors.grey.shade500),
+                          Icon(Icons.repeat,
+                              size: compact ? 10 : 12,
+                              color: Colors.grey.shade500),
                           const SizedBox(width: 3),
                           Text(
                             task.recurrence!,
@@ -150,7 +152,9 @@ class TaskCard extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.attach_file, size: compact ? 10 : 12, color: Colors.grey.shade500),
+                          Icon(Icons.attach_file,
+                              size: compact ? 10 : 12,
+                              color: Colors.grey.shade500),
                           const SizedBox(width: 3),
                           Text(
                             '${task.attachments.length}',
@@ -248,8 +252,7 @@ class TaskCard extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: tagColor.withValues(alpha: 0.15),
-            borderRadius:
-                BorderRadius.circular(AppConstants.borderRadiusSmall),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
           ),
           child: Text(
             tagName,
@@ -297,7 +300,8 @@ class TaskCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.timer_outlined, size: compact ? 10 : 12, color: Colors.grey.shade500),
+        Icon(Icons.timer_outlined,
+            size: compact ? 10 : 12, color: Colors.grey.shade500),
         const SizedBox(width: 3),
         Text(
           hasEstimate
@@ -340,9 +344,8 @@ class TaskCard extends StatelessWidget {
       dateColor = Colors.red;
       dateIcon = Icons.warning_amber;
       final days = now.difference(dueDate).inDays;
-      label = days == 0
-          ? 'Overdue'
-          : 'Overdue by $days day${days == 1 ? '' : 's'}';
+      label =
+          days == 0 ? 'Overdue' : 'Overdue by $days day${days == 1 ? '' : 's'}';
     } else if (isDueToday) {
       dateColor = Colors.orange;
       dateIcon = Icons.schedule;

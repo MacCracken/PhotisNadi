@@ -71,7 +71,9 @@ class YeomanService extends ChangeNotifier {
     String? apiKey,
     String? password,
   }) async {
-    _baseUrl = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    _baseUrl = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
 
     if (apiKey != null) {
       _apiKey = apiKey;
@@ -297,14 +299,27 @@ class YeomanService extends ChangeNotifier {
       final tools = [
         {
           'name': 'photis_list_tasks',
-          'description': 'List tasks from Photis Nadi. Returns tasks with status, priority, due dates, tags, and dependencies.',
+          'description':
+              'List tasks from Photis Nadi. Returns tasks with status, priority, due dates, tags, and dependencies.',
           'inputSchema': {
             'type': 'object',
             'properties': {
-              'project_id': {'type': 'string', 'description': 'Filter by project ID'},
-              'status': {'type': 'string', 'enum': ['todo', 'inProgress', 'inReview', 'blocked', 'done']},
-              'priority': {'type': 'string', 'enum': ['low', 'medium', 'high']},
-              'limit': {'type': 'number', 'description': 'Max results (default 50)'},
+              'project_id': {
+                'type': 'string',
+                'description': 'Filter by project ID'
+              },
+              'status': {
+                'type': 'string',
+                'enum': ['todo', 'inProgress', 'inReview', 'blocked', 'done']
+              },
+              'priority': {
+                'type': 'string',
+                'enum': ['low', 'medium', 'high']
+              },
+              'limit': {
+                'type': 'number',
+                'description': 'Max results (default 50)'
+              },
             },
           },
         },
@@ -315,12 +330,24 @@ class YeomanService extends ChangeNotifier {
             'type': 'object',
             'properties': {
               'title': {'type': 'string', 'description': 'Task title'},
-              'description': {'type': 'string', 'description': 'Task description'},
+              'description': {
+                'type': 'string',
+                'description': 'Task description'
+              },
               'project_id': {'type': 'string', 'description': 'Project ID'},
-              'priority': {'type': 'string', 'enum': ['low', 'medium', 'high']},
-              'status': {'type': 'string', 'enum': ['todo', 'inProgress', 'inReview', 'blocked', 'done']},
+              'priority': {
+                'type': 'string',
+                'enum': ['low', 'medium', 'high']
+              },
+              'status': {
+                'type': 'string',
+                'enum': ['todo', 'inProgress', 'inReview', 'blocked', 'done']
+              },
               'due_date': {'type': 'string', 'format': 'date-time'},
-              'tags': {'type': 'array', 'items': {'type': 'string'}},
+              'tags': {
+                'type': 'array',
+                'items': {'type': 'string'}
+              },
             },
             'required': ['title'],
           },
@@ -334,10 +361,19 @@ class YeomanService extends ChangeNotifier {
               'task_id': {'type': 'string', 'description': 'Task ID to update'},
               'title': {'type': 'string'},
               'description': {'type': 'string'},
-              'status': {'type': 'string', 'enum': ['todo', 'inProgress', 'inReview', 'blocked', 'done']},
-              'priority': {'type': 'string', 'enum': ['low', 'medium', 'high']},
+              'status': {
+                'type': 'string',
+                'enum': ['todo', 'inProgress', 'inReview', 'blocked', 'done']
+              },
+              'priority': {
+                'type': 'string',
+                'enum': ['low', 'medium', 'high']
+              },
               'due_date': {'type': 'string', 'format': 'date-time'},
-              'tags': {'type': 'array', 'items': {'type': 'string'}},
+              'tags': {
+                'type': 'array',
+                'items': {'type': 'string'}
+              },
             },
             'required': ['task_id'],
           },
@@ -348,23 +384,31 @@ class YeomanService extends ChangeNotifier {
           'inputSchema': {
             'type': 'object',
             'properties': {
-              'include_archived': {'type': 'boolean', 'description': 'Include archived projects'},
+              'include_archived': {
+                'type': 'boolean',
+                'description': 'Include archived projects'
+              },
             },
           },
         },
         {
           'name': 'photis_list_rituals',
-          'description': 'List rituals with completion status and streak data from Photis Nadi.',
+          'description':
+              'List rituals with completion status and streak data from Photis Nadi.',
           'inputSchema': {
             'type': 'object',
             'properties': {
-              'frequency': {'type': 'string', 'enum': ['daily', 'weekly', 'monthly']},
+              'frequency': {
+                'type': 'string',
+                'enum': ['daily', 'weekly', 'monthly']
+              },
             },
           },
         },
         {
           'name': 'photis_task_analytics',
-          'description': 'Get task analytics and productivity insights from Photis Nadi.',
+          'description':
+              'Get task analytics and productivity insights from Photis Nadi.',
           'inputSchema': {
             'type': 'object',
             'properties': {},
@@ -405,11 +449,13 @@ class YeomanService extends ChangeNotifier {
 
   Future<bool> _authenticate(String password) async {
     try {
-      final response = await _httpClient.post(
-        Uri.parse('$_baseUrl/api/v1/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'password': password}),
-      ).timeout(const Duration(seconds: 10));
+      final response = await _httpClient
+          .post(
+            Uri.parse('$_baseUrl/api/v1/auth/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'password': password}),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -443,7 +489,8 @@ class YeomanService extends ChangeNotifier {
   }) async {
     if (_baseUrl == null) return null;
 
-    final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: queryParams);
+    final uri =
+        Uri.parse('$_baseUrl$path').replace(queryParameters: queryParams);
 
     try {
       late http.Response response;
@@ -453,9 +500,11 @@ class YeomanService extends ChangeNotifier {
         case 'GET':
           response = await _httpClient.get(uri, headers: _headers);
         case 'POST':
-          response = await _httpClient.post(uri, headers: _headers, body: bodyStr);
+          response =
+              await _httpClient.post(uri, headers: _headers, body: bodyStr);
         case 'PUT':
-          response = await _httpClient.put(uri, headers: _headers, body: bodyStr);
+          response =
+              await _httpClient.put(uri, headers: _headers, body: bodyStr);
         case 'DELETE':
           response = await _httpClient.delete(uri, headers: _headers);
         default:
@@ -593,21 +642,24 @@ class YeomanService extends ChangeNotifier {
     final avgStreak = total > 0
         ? rituals.fold<int>(0, (sum, r) => sum + r.streakCount) / total
         : 0.0;
-    final longestStreak = rituals.fold<int>(0, (max, r) =>
-        r.streakCount > max ? r.streakCount : max);
+    final longestStreak = rituals.fold<int>(
+        0, (max, r) => r.streakCount > max ? r.streakCount : max);
 
     final byFrequency = <String, Map<String, dynamic>>{};
     for (final freq in ['daily', 'weekly', 'monthly']) {
-      final group = rituals.where(
-        (r) => r.frequency.toString().split('.').last == freq,
-      ).toList();
+      final group = rituals
+          .where(
+            (r) => r.frequency.toString().split('.').last == freq,
+          )
+          .toList();
       if (group.isNotEmpty) {
         final groupCompleted = group.where((r) => r.isCompleted).length;
         byFrequency[freq] = {
           'total': group.length,
           'completed': groupCompleted,
           'completion_rate': groupCompleted / group.length,
-          'avg_streak': group.fold<int>(0, (s, r) => s + r.streakCount) / group.length,
+          'avg_streak':
+              group.fold<int>(0, (s, r) => s + r.streakCount) / group.length,
         };
       }
     }

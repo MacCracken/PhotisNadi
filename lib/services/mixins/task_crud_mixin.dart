@@ -79,7 +79,7 @@ mixin TaskCrudMixin on ChangeNotifier {
   Future<bool> deleteTask(String taskId) async {
     try {
       await taskRepo.delete(taskId);
-      taskRepo.removeDependencyReferences(taskId);
+      await taskRepo.removeDependencyReferences(taskId);
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -113,7 +113,8 @@ mixin TaskCrudMixin on ChangeNotifier {
     }
   }
 
-  Future<bool> removeTaskDependency(String taskId, String dependsOnTaskId) async {
+  Future<bool> removeTaskDependency(
+      String taskId, String dependsOnTaskId) async {
     try {
       final task = taskRepo.get(taskId);
       if (task == null) return false;
@@ -326,7 +327,8 @@ mixin TaskCrudMixin on ChangeNotifier {
       }
 
       // Only create next occurrence if it's due
-      if (nextDue != null && !nextDue.isAfter(now.add(const Duration(days: 1)))) {
+      if (nextDue != null &&
+          !nextDue.isAfter(now.add(const Duration(days: 1)))) {
         const uuid = Uuid();
         final newTask = Task(
           id: uuid.v4(),

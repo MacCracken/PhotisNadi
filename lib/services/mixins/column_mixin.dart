@@ -30,7 +30,8 @@ mixin ColumnMixin on ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log('Failed to add column', name: 'TaskService', error: e, stackTrace: stackTrace);
+      developer.log('Failed to add column',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
@@ -57,7 +58,8 @@ mixin ColumnMixin on ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log('Failed to update column', name: 'TaskService', error: e, stackTrace: stackTrace);
+      developer.log('Failed to update column',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
@@ -86,7 +88,8 @@ mixin ColumnMixin on ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log('Failed to delete column', name: 'TaskService', error: e, stackTrace: stackTrace);
+      developer.log('Failed to delete column',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
@@ -118,7 +121,8 @@ mixin ColumnMixin on ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log('Failed to reorder columns', name: 'TaskService', error: e, stackTrace: stackTrace);
+      developer.log('Failed to reorder columns',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }

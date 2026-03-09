@@ -57,6 +57,24 @@ All notable changes to Photis Nadi will be documented in this file.
   - Export/import tests (JSON round-trip, CSV export, escaping)
   - ThemeService tests (defaults, accent color enum)
   - SyncService model tests (SyncConflict, SyncException, configs)
+- Code audit round 2: 179 new tests (389 total), coverage 43.4% → 52.1%
+  - REST API serializer tests (taskToJson, projectToJson, ritualToJson round-trips)
+  - Auth middleware tests (health bypass, 401/403, valid bearer token)
+  - PerformanceMonitor tests (measure, measureAsync, reset)
+  - Task model extended tests (formattedTrackedTime, subtask helpers, copyWith, validation)
+  - Project model extended tests (generateNextTaskKey, migration, color normalization)
+  - Column mixin tests (add, update, delete, reorder, getColumnStatus)
+  - Filter/sort extended tests (setters, hasActiveFilters, date range, priority sort)
+  - Project sharing tests (share, unshare, idempotent)
+  - TaskCrud extended tests (subtasks, time tracking, attachments, recurrence, moveTaskToProject)
+  - Board management tests (addBoard, updateBoard, deleteBoard, selectBoard)
+  - Task service query tests (pagination, filtered columns, column counts)
+  - Recurring tasks tests (daily/weekly/monthly recurrence processing)
+  - Tag mixin CRUD tests (add, delete, update, getByProject, getByName)
+  - ThemeService persistence tests (SharedPreferences mock, load/save all prefs)
+  - Sync parsing tests (fromMap/toSyncMap round-trips for all model types)
+  - Hive disk persistence tests (close/reopen boxes for .g.dart binary read coverage)
+  - Repository tests (where, firstWhere, count, index unmodifiable)
 
 ### Fixed
 - `Ritual.markCompleted()` and `resetIfNeeded()` now async with `await save()` (data was not persisting)
@@ -67,6 +85,17 @@ All notable changes to Photis Nadi will be documented in this file.
 - API rituals endpoint properly awaits `resetIfNeeded()`
 - Docker build: switched from `dart compile exe` to `dart build cli` (build hooks support)
 - Linux CI: added `libsecret-1-dev` dependency for `flutter_secure_storage`
+- `TaskRepository.removeDependencyReferences()` now async with `await put()` (dependency cleanup was not persisting)
+- API tags validation: `whereType<String>()` instead of unsafe `cast<String>()` to prevent type errors
+- CI/CD security hardening:
+  - `actions/checkout@v6` → `actions/checkout@v4` (v6 doesn't exist, corrected to latest stable)
+  - Added explicit `permissions:` blocks with minimum required scopes
+  - Command injection fix: version input now validated and passed via env vars, not direct interpolation
+  - Added `timeout-minutes:` to all jobs to prevent runaway builds
+  - Added `retention-days: 30` to artifact uploads
+  - Job-level permissions for container build (scoped `packages: write`)
+  - Removed unnecessary `id-token: write` and `attestations: write` permissions
+  - Added `libsecret-1-dev` to release Linux build dependencies (was missing)
 
 ### Changed
 - TaskService (1131 lines) decomposed into 6 focused mixins:

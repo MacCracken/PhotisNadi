@@ -29,11 +29,13 @@ class TaskAdapter extends TypeAdapter<Task> {
       taskKey: fields[9] as String?,
       modifiedAt: fields[10] as DateTime?,
       dependsOn: (fields[11] as List).cast<String>(),
-      subtasks: fields.containsKey(12) ? (fields[12] as List).cast<String>() : [],
+      subtasks:
+          fields.containsKey(12) ? (fields[12] as List).cast<String>() : [],
       estimatedMinutes: fields.containsKey(13) ? fields[13] as int? : null,
       trackedMinutes: fields.containsKey(14) ? fields[14] as int? ?? 0 : 0,
       recurrence: fields.containsKey(15) ? fields[15] as String? : null,
-      attachments: fields.containsKey(16) ? (fields[16] as List).cast<String>() : [],
+      attachments:
+          fields.containsKey(16) ? (fields[16] as List).cast<String>() : [],
     );
   }
 

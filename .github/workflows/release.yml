@@ -14,8 +14,6 @@ on:
 permissions:
   contents: write
   packages: write
-  id-token: write
-  attestations: write
 
 env:
   REGISTRY: ghcr.io
@@ -31,6 +29,7 @@ jobs:
 
   version:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [ci]
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -38,11 +37,18 @@ jobs:
     steps:
     - name: Determine version
       id: version
+      env:
+        INPUT_VERSION: ${{ github.event.inputs.version }}
       run: |
-        if [ -n "${{ github.event.inputs.version }}" ]; then
-          VERSION="${{ github.event.inputs.version }}"
+        if [ -n "${INPUT_VERSION}" ]; then
+          VERSION="${INPUT_VERSION}"
         else
           VERSION="${GITHUB_REF_NAME#v}"
+        fi
+        # Validate version format (YYYY.M.D or YYYY.M.D.P)
+        if ! echo "${VERSION}" | grep -qE '^[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+          echo "::error::Invalid version format: ${VERSION}"
+          exit 1
         fi
         echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
         # Convert YYYY.M.D[.P] → YYYYMMDD[P] for filenames
@@ -52,6 +58,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [version]
     steps:
     - name: Create GitHub Release
@@ -64,34 +71,38 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [version, create-release]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
     - name: Install Linux build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgtk-3-dev pkg-config cmake ninja-build clang libayatana-appindicator3-dev
+        sudo apt-get install -y libgtk-3-dev pkg-config cmake ninja-build clang libayatana-appindicator3-dev libsecret-1-dev
     - run: flutter pub get
     - name: Build Linux release
       run: flutter build linux --release
     - name: Package Linux bundle
+      env:
+        VERSION_SLUG: ${{ needs.version.outputs.version_slug }}
       run: |
-        VERSION="${{ needs.version.outputs.version_slug }}"
-        tar -czf "photisnadi-${VERSION}-linux-x64.tar.gz" \
+        tar -czf "photisnadi-${VERSION_SLUG}-linux-x64.tar.gz" \
           -C build/linux/x64/release bundle
     - name: Upload to release
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release upload "${{ needs.version.outputs.version }}" photisnadi-*-linux-x64.tar.gz --clobber
+        RELEASE_VERSION: ${{ needs.version.outputs.version }}
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-linux-x64.tar.gz --clobber
 
   build-windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     needs: [version, create-release]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
@@ -100,21 +111,24 @@ jobs:
       run: flutter build windows --release
     - name: Package Windows bundle
       shell: pwsh
+      env:
+        VERSION_SLUG: ${{ needs.version.outputs.version_slug }}
       run: |
-        $version = "${{ needs.version.outputs.version_slug }}"
         Compress-Archive `
           -Path "build\windows\x64\runner\Release\*" `
-          -DestinationPath "photisnadi-${version}-windows-x64.zip"
+          -DestinationPath "photisnadi-${env:VERSION_SLUG}-windows-x64.zip"
     - name: Upload to release
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release upload "${{ needs.version.outputs.version }}" photisnadi-*-windows-x64.zip --clobber
+        RELEASE_VERSION: ${{ needs.version.outputs.version }}
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-windows-x64.zip --clobber
 
   build-macos:
     runs-on: macos-latest
+    timeout-minutes: 30
     needs: [version, create-release]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
@@ -122,20 +136,23 @@ jobs:
     - name: Build macOS release
       run: flutter build macos --release
     - name: Package macOS app
+      env:
+        VERSION_SLUG: ${{ needs.version.outputs.version_slug }}
       run: |
-        VERSION="${{ needs.version.outputs.version_slug }}"
         cd build/macos/Build/Products/Release
-        zip -r "${GITHUB_WORKSPACE}/photisnadi-${VERSION}-macos-universal.zip" *.app
+        zip -r "${GITHUB_WORKSPACE}/photisnadi-${VERSION_SLUG}-macos-universal.zip" *.app
     - name: Upload to release
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release upload "${{ needs.version.outputs.version }}" photisnadi-*-macos-universal.zip --clobber
+        RELEASE_VERSION: ${{ needs.version.outputs.version }}
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-macos-universal.zip --clobber
 
   build-web:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [version, create-release]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
@@ -143,19 +160,25 @@ jobs:
     - name: Build web release
       run: flutter build web --release
     - name: Package web build
+      env:
+        VERSION_SLUG: ${{ needs.version.outputs.version_slug }}
       run: |
-        VERSION="${{ needs.version.outputs.version_slug }}"
-        tar -czf "photisnadi-${VERSION}-web.tar.gz" -C build web
+        tar -czf "photisnadi-${VERSION_SLUG}-web.tar.gz" -C build web
     - name: Upload to release
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release upload "${{ needs.version.outputs.version }}" photisnadi-*-web.tar.gz --clobber
+        RELEASE_VERSION: ${{ needs.version.outputs.version }}
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-web.tar.gz --clobber
 
   build-container:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [version]
+    permissions:
+      contents: read
+      packages: write
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     - name: Log in to GHCR
@@ -184,19 +207,22 @@ jobs:
 
   checksums:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [version, build-linux, build-windows, build-macos, build-web]
     steps:
     - name: Download release assets
       env:
         GH_TOKEN: ${{ github.token }}
+        RELEASE_VERSION: ${{ needs.version.outputs.version }}
       run: |
-        gh release download "${{ needs.version.outputs.version }}" \
+        gh release download "${RELEASE_VERSION}" \
           --repo "${{ github.repository }}" --dir assets
     - name: Generate and upload checksums
       env:
         GH_TOKEN: ${{ github.token }}
+        RELEASE_VERSION: ${{ needs.version.outputs.version }}
       run: |
         cd assets
         sha256sum photisnadi-* > SHA256SUMS
-        gh release upload "${{ needs.version.outputs.version }}" SHA256SUMS --clobber \
+        gh release upload "${RELEASE_VERSION}" SHA256SUMS --clobber \
           --repo "${{ github.repository }}"

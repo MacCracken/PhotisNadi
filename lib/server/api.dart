@@ -127,13 +127,16 @@ Router buildApiRouter({
       modifiedAt: now,
       dueDate: dueDate,
       projectId: projectId,
-      tags: (body['tags'] as List<dynamic>?)?.cast<String>() ?? [],
+      tags: (body['tags'] as List<dynamic>?)
+              ?.whereType<String>()
+              .where((t) => t.isNotEmpty)
+              .toList() ??
+          [],
       taskKey: taskKey,
     );
 
     await tasks.put(id, task);
-    return Response(201,
-        body: jsonEncode(taskToJson(task)), headers: _json);
+    return Response(201, body: jsonEncode(taskToJson(task)), headers: _json);
   });
 
   router.patch('/api/v1/tasks/<id>', (Request request, String id) async {
@@ -236,8 +239,7 @@ Router buildApiRouter({
 
     final frequency = request.url.queryParameters['frequency'];
     if (frequency != null) {
-      final parsed =
-          RitualFrequency.values.where((f) => f.name == frequency);
+      final parsed = RitualFrequency.values.where((f) => f.name == frequency);
       if (parsed.isEmpty) {
         return Response(400,
             body: jsonEncode({'error': 'Invalid frequency: $frequency'}),
@@ -283,8 +285,7 @@ Router buildApiRouter({
         blocked++;
       }
 
-      if (task.status == TaskStatus.done &&
-          task.modifiedAt.isAfter(weekAgo)) {
+      if (task.status == TaskStatus.done && task.modifiedAt.isAfter(weekAgo)) {
         completedThisWeek++;
       }
     }
@@ -317,5 +318,4 @@ Future<Map<String, dynamic>?> _parseBody(Request request) async {
 }
 
 Response _badJson() => Response(400,
-    body: jsonEncode({'error': 'Invalid JSON body'}),
-    headers: _json);
+    body: jsonEncode({'error': 'Invalid JSON body'}), headers: _json);

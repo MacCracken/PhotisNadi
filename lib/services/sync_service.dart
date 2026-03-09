@@ -528,13 +528,10 @@ class SyncService extends ChangeNotifier {
     for (final task in localTasks) {
       if (remoteMap.containsKey(task.id)) {
         final remoteTask = remoteMap[task.id]!;
-        final diff = remoteTask.modifiedAt
-            .difference(task.modifiedAt)
-            .abs();
+        final diff = remoteTask.modifiedAt.difference(task.modifiedAt).abs();
 
         // If both modified within 5 seconds, flag as conflict
-        if (diff.inSeconds < 5 &&
-            remoteTask.modifiedAt != task.modifiedAt) {
+        if (diff.inSeconds < 5 && remoteTask.modifiedAt != task.modifiedAt) {
           _pendingConflicts.add(SyncConflict(
             entityType: 'task',
             entityId: task.id,
@@ -663,9 +660,8 @@ class SyncService extends ChangeNotifier {
     for (final project in localProjects) {
       if (remoteMap.containsKey(project.id)) {
         final remoteProject = remoteMap[project.id]!;
-        final diff = remoteProject.modifiedAt
-            .difference(project.modifiedAt)
-            .abs();
+        final diff =
+            remoteProject.modifiedAt.difference(project.modifiedAt).abs();
 
         if (diff.inSeconds < 5 &&
             remoteProject.modifiedAt != project.modifiedAt) {
