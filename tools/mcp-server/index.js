@@ -4,7 +4,9 @@
  * Photis Nadi MCP Server
  *
  * Exposes Photis Nadi task/project/ritual CRUD as MCP tools,
- * backed by Supabase. Register this server in SecureYeoman via:
+ * backed by the Photisnadi REST API (primary) with Supabase fallback.
+ *
+ * Register this server in SecureYeoman via:
  *
  *   POST /api/v1/mcp/servers
  *   {
@@ -13,10 +15,17 @@
  *     "command": "node",
  *     "args": ["tools/mcp-server/index.js"],
  *     "env": {
- *       "SUPABASE_URL": "...",
- *       "SUPABASE_SERVICE_KEY": "...",
- *       "PHOTIS_USER_ID": "..."
+ *       "PHOTISNADI_API_URL": "http://photisnadi:8081",
+ *       "PHOTISNADI_API_KEY": "..."
  *     }
+ *   }
+ *
+ * Optional Supabase fallback (used if REST API is unreachable):
+ *   "env": {
+ *     ...
+ *     "SUPABASE_URL": "...",
+ *     "SUPABASE_SERVICE_KEY": "...",
+ *     "PHOTIS_USER_ID": "..."
  *   }
  */
 
@@ -26,20 +35,61 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { createClient } from "@supabase/supabase-js";
 
+// ── Configuration ──
+
+const API_URL = process.env.PHOTISNADI_API_URL;
+const API_KEY = process.env.PHOTISNADI_API_KEY;
+
+// Optional Supabase fallback
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const PHOTIS_USER_ID = process.env.PHOTIS_USER_ID;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !PHOTIS_USER_ID) {
+const hasRestApi = API_URL && API_KEY;
+const hasSupabase = SUPABASE_URL && SUPABASE_SERVICE_KEY && PHOTIS_USER_ID;
+
+if (!hasRestApi && !hasSupabase) {
   console.error(
-    "Required env vars: SUPABASE_URL, SUPABASE_SERVICE_KEY, PHOTIS_USER_ID"
+    "Required env vars: PHOTISNADI_API_URL + PHOTISNADI_API_KEY, " +
+      "or SUPABASE_URL + SUPABASE_SERVICE_KEY + PHOTIS_USER_ID (fallback)"
   );
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+let supabase = null;
+if (hasSupabase) {
+  const { createClient } = await import("@supabase/supabase-js");
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+}
+
+// ── REST API helpers ──
+
+async function apiFetch(path, options = {}) {
+  const url = `${API_URL}${path}`;
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+      ...options.headers,
+    },
+  });
+  if (res.status === 204) return null;
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || `API error ${res.status}`);
+  return body;
+}
+
+function buildQuery(params) {
+  const entries = Object.entries(params).filter(
+    ([, v]) => v !== undefined && v !== null
+  );
+  if (entries.length === 0) return "";
+  return "?" + new URLSearchParams(entries).toString();
+}
+
+// ── Tool Definitions ──
 
 const TOOLS = [
   {
@@ -152,9 +202,67 @@ const TOOLS = [
   },
 ];
 
-// ── Tool Handlers ──
+// ── REST API Handlers ──
 
-async function handleListTasks(args) {
+async function restListTasks(args) {
+  const query = buildQuery({
+    project_id: args.project_id,
+    status: args.status,
+    priority: args.priority,
+    limit: args.limit,
+  });
+  return apiFetch(`/api/v1/tasks${query}`);
+}
+
+async function restCreateTask(args) {
+  return apiFetch("/api/v1/tasks", {
+    method: "POST",
+    body: JSON.stringify({
+      title: args.title,
+      description: args.description,
+      project_id: args.project_id,
+      priority: args.priority || "medium",
+      status: args.status || "todo",
+      due_date: args.due_date,
+      tags: args.tags,
+    }),
+  });
+}
+
+async function restUpdateTask(args) {
+  const updates = {};
+  if (args.title !== undefined) updates.title = args.title;
+  if (args.description !== undefined) updates.description = args.description;
+  if (args.status !== undefined) updates.status = args.status;
+  if (args.priority !== undefined) updates.priority = args.priority;
+  if (args.due_date !== undefined) updates.due_date = args.due_date;
+  if (args.tags !== undefined) updates.tags = args.tags;
+
+  return apiFetch(`/api/v1/tasks/${args.task_id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+async function restListProjects(args) {
+  const query = buildQuery({
+    include_archived: args.include_archived ? "true" : undefined,
+  });
+  return apiFetch(`/api/v1/projects${query}`);
+}
+
+async function restListRituals(args) {
+  const query = buildQuery({ frequency: args.frequency });
+  return apiFetch(`/api/v1/rituals${query}`);
+}
+
+async function restAnalytics() {
+  return apiFetch("/api/v1/analytics");
+}
+
+// ── Supabase Fallback Handlers ──
+
+async function sbListTasks(args) {
   let query = supabase
     .from("tasks")
     .select("*")
@@ -163,14 +271,16 @@ async function handleListTasks(args) {
   if (args.project_id) query = query.eq("project_id", args.project_id);
   if (args.status) query = query.eq("status", args.status);
   if (args.priority) query = query.eq("priority", args.priority);
-  query = query.limit(args.limit || 50).order("modified_at", { ascending: false });
+  query = query
+    .limit(args.limit || 50)
+    .order("modified_at", { ascending: false });
 
   const { data, error } = await query;
   if (error) throw new Error(`Supabase error: ${error.message}`);
   return data;
 }
 
-async function handleCreateTask(args) {
+async function sbCreateTask(args) {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
@@ -194,7 +304,7 @@ async function handleCreateTask(args) {
   return data[0];
 }
 
-async function handleUpdateTask(args) {
+async function sbUpdateTask(args) {
   const updates = { modified_at: new Date().toISOString() };
   if (args.title !== undefined) updates.title = args.title;
   if (args.description !== undefined) updates.description = args.description;
@@ -215,7 +325,7 @@ async function handleUpdateTask(args) {
   return data[0];
 }
 
-async function handleListProjects(args) {
+async function sbListProjects(args) {
   let query = supabase
     .from("projects")
     .select("*")
@@ -230,7 +340,7 @@ async function handleListProjects(args) {
   return data;
 }
 
-async function handleListRituals(args) {
+async function sbListRituals(args) {
   let query = supabase
     .from("rituals")
     .select("*")
@@ -245,7 +355,7 @@ async function handleListRituals(args) {
   return data;
 }
 
-async function handleTaskAnalytics() {
+async function sbAnalytics() {
   const { data: tasks, error } = await supabase
     .from("tasks")
     .select("status, priority, due_date, depends_on, created_at, modified_at")
@@ -298,10 +408,46 @@ async function handleTaskAnalytics() {
   };
 }
 
+// ── Dispatch with fallback ──
+
+const REST_HANDLERS = {
+  photis_list_tasks: restListTasks,
+  photis_create_task: restCreateTask,
+  photis_update_task: restUpdateTask,
+  photis_list_projects: restListProjects,
+  photis_list_rituals: restListRituals,
+  photis_task_analytics: restAnalytics,
+};
+
+const SUPABASE_HANDLERS = {
+  photis_list_tasks: sbListTasks,
+  photis_create_task: sbCreateTask,
+  photis_update_task: sbUpdateTask,
+  photis_list_projects: sbListProjects,
+  photis_list_rituals: sbListRituals,
+  photis_task_analytics: sbAnalytics,
+};
+
+async function dispatch(name, args) {
+  if (hasRestApi) {
+    try {
+      return await REST_HANDLERS[name](args);
+    } catch (err) {
+      if (hasSupabase) {
+        console.error(`REST API failed (${err.message}), falling back to Supabase`);
+        return await SUPABASE_HANDLERS[name](args);
+      }
+      throw err;
+    }
+  }
+  // No REST API configured — use Supabase directly
+  return await SUPABASE_HANDLERS[name](args);
+}
+
 // ── MCP Server Setup ──
 
 const server = new Server(
-  { name: "photis-nadi", version: "1.0.0" },
+  { name: "photis-nadi", version: "2.0.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -312,34 +458,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
-  try {
-    let result;
-    switch (name) {
-      case "photis_list_tasks":
-        result = await handleListTasks(args || {});
-        break;
-      case "photis_create_task":
-        result = await handleCreateTask(args || {});
-        break;
-      case "photis_update_task":
-        result = await handleUpdateTask(args || {});
-        break;
-      case "photis_list_projects":
-        result = await handleListProjects(args || {});
-        break;
-      case "photis_list_rituals":
-        result = await handleListRituals(args || {});
-        break;
-      case "photis_task_analytics":
-        result = await handleTaskAnalytics();
-        break;
-      default:
-        return {
-          content: [{ type: "text", text: `Unknown tool: ${name}` }],
-          isError: true,
-        };
-    }
+  if (!REST_HANDLERS[name]) {
+    return {
+      content: [{ type: "text", text: `Unknown tool: ${name}` }],
+      isError: true,
+    };
+  }
 
+  try {
+    const result = await dispatch(name, args || {});
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };

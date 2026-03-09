@@ -5,6 +5,21 @@ All notable changes to Photis Nadi will be documented in this file.
 ## [2026.3.9]
 
 ### Added
+- REST API server (Dart Shelf):
+  - Standalone HTTP server at `bin/server.dart` with native AOT compilation
+  - 8 REST endpoints: tasks CRUD, projects list, rituals list, analytics, health check
+  - API key authentication via `Authorization: Bearer <key>` header (health endpoint exempt)
+  - JSON serializers (`lib/server/serializers.dart`) decoupled from Flutter
+  - Auth middleware (`lib/server/auth.dart`) with 401/403 responses
+  - Hive data access in separate process from Flutter web client
+  - Dockerfile updated: compiles server to native binary, exposes port 8081
+  - Docker Compose: `PHOTISNADI_API_KEY` env var, port 8081 mapping, named data volume
+  - Entrypoint supports `web` (API + Caddy), `api` (API only), and `linux` modes
+- MCP server switched from Supabase to REST API:
+  - Primary backend: Photisnadi REST API (`PHOTISNADI_API_URL` + `PHOTISNADI_API_KEY`)
+  - Supabase fallback: auto-retries via Supabase if REST API is unreachable (optional)
+  - `@supabase/supabase-js` moved to optional dependency
+  - Server version bumped to 2.0.0
 - Performance profiling:
   - `PerformanceMonitor` singleton utility with `measure`/`measureAsync` helpers
   - Auto-reports on init, slow-operation detection (>50ms threshold)
@@ -45,6 +60,11 @@ All notable changes to Photis Nadi will be documented in this file.
 - Release workflow: accepts both `v`-prefixed and plain version tags, YYYYMMDD filename format
 
 ### New Files
+- `bin/server.dart` — REST API server entry point
+- `lib/server/api.dart` — REST API router and endpoint handlers
+- `lib/server/auth.dart` — API key authentication middleware
+- `lib/server/serializers.dart` — JSON serialization helpers
+- `lib/common/validators.dart` — Model validation utilities (hex colors, UUIDs, project keys)
 - `lib/common/performance_monitor.dart` — Performance profiling utility
 - `lib/services/mixins/project_mixin.dart` — Project management mixin
 - `lib/services/mixins/task_crud_mixin.dart` — Task CRUD mixin

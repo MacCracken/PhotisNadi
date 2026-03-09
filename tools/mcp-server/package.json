@@ -1,14 +1,16 @@
 {
   "name": "@photisnadi/mcp-server",
-  "version": "1.0.0",
-  "description": "MCP server exposing Photis Nadi task CRUD via Supabase",
+  "version": "2.0.0",
+  "description": "MCP server exposing Photis Nadi task CRUD via REST API (Supabase fallback)",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "optionalDependencies": {
     "@supabase/supabase-js": "^2.0.0"
   }
 }
