@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 import 'package:hive/hive.dart';
+import '../common/performance_monitor.dart';
 
 /// Generic Hive-backed repository with indexed lookups.
 abstract class HiveRepository<T extends HiveObject> {
@@ -18,8 +19,10 @@ abstract class HiveRepository<T extends HiveObject> {
   String getId(T entity);
 
   Future<void> init() async {
-    _box = await Hive.openBox<T>(_boxName);
-    _rebuildIndex();
+    await PerformanceMonitor.measureAsync('$_logName.init', () async {
+      _box = await Hive.openBox<T>(_boxName);
+      _rebuildIndex();
+    });
   }
 
   void _rebuildIndex() {
@@ -34,9 +37,11 @@ abstract class HiveRepository<T extends HiveObject> {
   Future<T> put(T entity) async {
     final id = getId(entity);
     try {
-      await _box.put(id, entity);
-      _index[id] = entity;
-      return entity;
+      return await PerformanceMonitor.measureAsync('$_logName.put', () async {
+        await _box.put(id, entity);
+        _index[id] = entity;
+        return entity;
+      });
     } catch (e, stackTrace) {
       developer.log(
         'Failed to put $id',
@@ -50,8 +55,10 @@ abstract class HiveRepository<T extends HiveObject> {
 
   Future<void> delete(String id) async {
     try {
-      await _box.delete(id);
-      _index.remove(id);
+      await PerformanceMonitor.measureAsync('$_logName.delete', () async {
+        await _box.delete(id);
+        _index.remove(id);
+      });
     } catch (e, stackTrace) {
       developer.log(
         'Failed to delete $id',

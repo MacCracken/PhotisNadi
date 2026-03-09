@@ -803,10 +803,10 @@ void main() {
       );
     });
 
-    test('Board throws on invalid ID', () {
+    test('Board throws on empty ID', () {
       expect(
         () => Board(
-          id: 'invalid',
+          id: '',
           title: 'Test',
           createdAt: DateTime.now(),
         ),

@@ -49,6 +49,32 @@ class Project extends HiveObject {
   @HiveField(12)
   String? ownerId;
 
+  /// Multiple boards per project.
+  @HiveField(13)
+  List<Board> boards;
+
+  /// Currently active board ID.
+  @HiveField(14)
+  String? activeBoardId;
+
+  /// Get the active board, or the first board if none selected.
+  Board? get activeBoard {
+    if (boards.isEmpty) return null;
+    if (activeBoardId != null) {
+      try {
+        return boards.firstWhere((b) => b.id == activeBoardId);
+      } catch (_) {}
+    }
+    return boards.first;
+  }
+
+  /// Get columns from the active board, falling back to project columns.
+  List<BoardColumn> get activeColumns {
+    final board = activeBoard;
+    if (board != null && board.columns.isNotEmpty) return board.columns;
+    return columns;
+  }
+
   static List<BoardColumn> defaultColumns() {
     return [
       BoardColumn(
@@ -86,8 +112,11 @@ class Project extends HiveObject {
     List<BoardColumn>? columns,
     this.sharedWith = const [],
     this.ownerId,
+    List<Board>? boards,
+    this.activeBoardId,
   })  : modifiedAt = modifiedAt ?? createdAt,
-        columns = columns ?? defaultColumns() {
+        columns = columns ?? defaultColumns(),
+        boards = boards ?? [] {
     if (!isValidUuid(id)) {
       throw ArgumentError('Invalid project ID: must be a valid UUID');
     }
@@ -101,6 +130,18 @@ class Project extends HiveObject {
     }
     projectKey = normalizedKey;
     color = isValidHexColor(color) ? normalizeHexColor(color) : '#4A90E2';
+
+    // Migration: if no boards exist, create one from existing columns
+    if (this.boards.isEmpty && this.columns.isNotEmpty) {
+      final defaultBoard = Board(
+        id: '${id}_default',
+        title: 'Default',
+        createdAt: createdAt,
+        columns: List.from(this.columns),
+      );
+      this.boards = [defaultBoard];
+      activeBoardId = defaultBoard.id;
+    }
   }
 
   String generateNextTaskKey() {
@@ -122,6 +163,8 @@ class Project extends HiveObject {
     List<BoardColumn>? columns,
     List<String>? sharedWith,
     String? ownerId,
+    List<Board>? boards,
+    String? activeBoardId,
   }) {
     return Project(
       id: id ?? this.id,
@@ -137,6 +180,8 @@ class Project extends HiveObject {
       columns: columns ?? this.columns,
       sharedWith: sharedWith ?? this.sharedWith,
       ownerId: ownerId ?? this.ownerId,
+      boards: boards ?? this.boards,
+      activeBoardId: activeBoardId ?? this.activeBoardId,
     );
   }
 }

@@ -220,7 +220,7 @@ class KanbanBoardState extends State<KanbanBoard> {
     final project = taskService.selectedProject;
     if (project == null) return;
 
-    final columns = project.columns;
+    final columns = project.activeColumns;
     if (columns.isEmpty) return;
 
     _focusedColumnIndex = _focusedColumnIndex.clamp(0, columns.length - 1);
@@ -243,7 +243,7 @@ class KanbanBoardState extends State<KanbanBoard> {
     final project = taskService.selectedProject;
     if (project == null) return;
 
-    final columns = project.columns;
+    final columns = project.activeColumns;
     if (columns.isEmpty) return;
 
     _focusedColumnIndex =
@@ -285,7 +285,7 @@ class KanbanBoardState extends State<KanbanBoard> {
         compact ? AppConstants.columnMarginCompact : AppConstants.columnMargin;
 
     return Selector<TaskService, List<BoardColumn>>(
-      selector: (_, service) => service.selectedProject?.columns ?? [],
+      selector: (_, service) => service.selectedProject?.activeColumns ?? [],
       builder: (context, columns, _) {
         // Build focus nodes for all visible tasks
         final taskService = context.read<TaskService>();

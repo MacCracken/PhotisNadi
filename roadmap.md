@@ -7,6 +7,13 @@ Cross-platform productivity app combining Kanban-style task management with dail
 
 ## Completed ✓
 
+### v2026.3.9
+- Performance Profiling: PerformanceMonitor utility with measure/measureAsync, auto-reports on init, slow-op detection (>50ms), instrumented repositories and service hot paths
+- Mixin Decomposition: TaskService (1131 lines) decomposed into 6 focused mixins (ProjectMixin, TaskCrudMixin, FilterSortMixin, ColumnMixin, RitualMixin, TagMixin) while preserving identical public API
+- Multiple Boards per Project: Board CRUD, 3 templates (Default/Bug Tracking/Sprint), board selector UI, backwards-compatible migration from single-board model
+- Export/Import: JSON export (full or per-project), CSV task export, JSON import with summary, file picker integration, export/import dialog in project header
+- Test suite maintained at 154 tests (138 unit, 16 widget)
+
 ### v2026.3.5
 - Tags System: Create/edit/delete tags with colors, multi-tag filtering, tag management UI
 - Supabase Sync: Auth flow, cloud backup, cross-device sync, conflict resolution UI, auto-sync
@@ -42,27 +49,21 @@ Cross-platform productivity app combining Kanban-style task management with dail
 
 ## Planned Features
 
-### Medium Priority
-
-1. **Multiple Boards per Project**
-   - Board templates
-   - Board switching
-
-### Low Priority
-
-2. **Export/Import**
-   - JSON export
-   - CSV export for tasks
+### Supabase Runtime Configuration
+- [ ] **Settings UI for Supabase credentials** — Add a settings screen where users can enter their Supabase URL and anon key at runtime, stored securely via `flutter_secure_storage` (or Hive encrypted box)
+- [ ] **Remove compile-time env vars** — Remove `String.fromEnvironment('SUPABASE_URL')` / `SUPABASE_ANON_KEY` from `main.dart`; load credentials from secure storage instead
+- [ ] **Connection test** — Validate credentials with a test request before saving, show success/error feedback
+- [ ] **Disconnect option** — Allow users to clear credentials and revert to offline-only mode
 
 ---
 
 ## Technical Improvements
 
 ### Tech Debt
-- [ ] Performance profiling for large datasets
+- [x] Performance profiling for large datasets (PerformanceMonitor utility)
 
 ### Architecture
-- [ ] Consider BLoC pattern for complex state
+- [x] Consider BLoC pattern for complex state (resolved via mixin decomposition — Provider retained, TaskService split into 6 mixins)
 - [x] Repository pattern for data access (HiveRepository base, TaskRepository with secondary indexes)
 - [x] Dependency injection setup (constructor injection for repositories)
 

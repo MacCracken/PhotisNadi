@@ -23,13 +23,14 @@ class BoardAdapter extends TypeAdapter<Board> {
       createdAt: fields[3] as DateTime,
       columnIds: (fields[4] as List).cast<String>(),
       color: fields[5] as String,
+      columns: fields.containsKey(6) ? (fields[6] as List?)?.cast<BoardColumn>() ?? [] : [],
     );
   }
 
   @override
   void write(BinaryWriter writer, Board obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class BoardAdapter extends TypeAdapter<Board> {
       ..writeByte(4)
       ..write(obj.columnIds)
       ..writeByte(5)
-      ..write(obj.color);
+      ..write(obj.color)
+      ..writeByte(6)
+      ..write(obj.columns);
   }
 
   @override
