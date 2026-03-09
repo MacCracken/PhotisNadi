@@ -2,7 +2,67 @@
 
 All notable changes to Photis Nadi will be documented in this file.
 
-## [2026.3.5] - 2026-03-05
+## [2026.3.9]
+
+### Added
+- Performance profiling:
+  - `PerformanceMonitor` singleton utility with `measure`/`measureAsync` helpers
+  - Auto-reports on init, slow-operation detection (>50ms threshold)
+  - Instrumented repositories and service hot paths
+- Multiple boards per project:
+  - Board CRUD with `addBoard`, `updateBoard`, `deleteBoard`, `selectBoard`
+  - 3 board templates: Default, Bug Tracking, Sprint
+  - Board selector UI (chip row in project header)
+  - Backwards-compatible migration from single-board model
+- Export/Import:
+  - JSON export (full or per-project), CSV task export
+  - JSON import with summary dialog
+  - File picker integration, export/import button in project header
+- Docker container:
+  - Multi-stage Dockerfile on `ghcr.io/maccracken/agnosticos:latest`
+  - Flutter web served via Caddy with SPA fallback
+  - Docker Compose setup with health checks
+  - GHCR push on tagged releases
+- CI/CD multi-platform builds:
+  - Windows (windows-latest) and macOS (macos-latest) build jobs
+  - Web build artifact
+  - Docker build-only validation with GHA cache
+- 16 new tests (154 total: 138 unit, 16 widget)
+
+### Changed
+- TaskService (1131 lines) decomposed into 6 focused mixins:
+  - `ProjectMixin` — project CRUD, selection, sharing
+  - `TaskCrudMixin` — task CRUD, dependencies, subtasks, time tracking
+  - `FilterSortMixin` — filter/sort state and logic
+  - `ColumnMixin` — column management (board-aware)
+  - `RitualMixin` — ritual CRUD and resets
+  - `TagMixin` — tag CRUD with cross-mixin filter cleanup
+- Board model: relaxed ID validation, added `columns` field (HiveField 6)
+- Project model: added `boards` (HiveField 13) and `activeBoardId` (HiveField 14)
+- All `project.columns` references updated to `project.activeColumns`
+- Boolean service methods converted to named parameters (`setEnabled({required bool enabled})`)
+- 19 flutter analyze info-level issues resolved (tearoffs, named constructors, Size.zero, etc.)
+- Release workflow: accepts both `v`-prefixed and plain version tags, YYYYMMDD filename format
+
+### New Files
+- `lib/common/performance_monitor.dart` — Performance profiling utility
+- `lib/services/mixins/project_mixin.dart` — Project management mixin
+- `lib/services/mixins/task_crud_mixin.dart` — Task CRUD mixin
+- `lib/services/mixins/filter_sort_mixin.dart` — Filter/sort mixin
+- `lib/services/mixins/column_mixin.dart` — Column management mixin
+- `lib/services/mixins/ritual_mixin.dart` — Ritual management mixin
+- `lib/services/mixins/tag_mixin.dart` — Tag management mixin
+- `lib/services/export_import_service.dart` — Export/import utility
+- `lib/widgets/dialogs/board_dialogs.dart` — Board management dialogs
+- `Dockerfile` — Multi-stage Flutter web + Caddy container
+- `docker-compose.yml` — Container orchestration
+- `docker/Caddyfile` — Caddy static file server config
+- `docker/entrypoint.sh` — Container entrypoint (web/linux modes)
+- `.dockerignore` — Docker build exclusions
+
+---
+
+## [2026.3.5]
 
 ### Added
 - SecureYeoman integration:
@@ -121,7 +181,7 @@ All notable changes to Photis Nadi will be documented in this file.
 
 ---
 
-## [2026.2.28] - 2026-02-28
+## [2026.2.28]
 
 ### Added
 - Task dependencies:
@@ -143,7 +203,7 @@ All notable changes to Photis Nadi will be documented in this file.
 
 ---
 
-## [2026.2.22] - 2026-02-22
+## [2026.2.22]
 
 ### Added
 - Extracted reusable UI components:
@@ -171,7 +231,7 @@ All notable changes to Photis Nadi will be documented in this file.
 
 ---
 
-## [2026.2.16] - 2026-02-16
+## [2026.2.16]
 
 ### Added
 - Model validation for hex colors, UUIDs, project keys
