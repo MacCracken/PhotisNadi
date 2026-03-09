@@ -1,0 +1,321 @@
+import 'dart:convert';
+import 'package:hive/hive.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
+import 'package:uuid/uuid.dart';
+import '../models/task.dart';
+import '../models/project.dart';
+import '../models/ritual.dart';
+import 'serializers.dart';
+
+const _json = {'content-type': 'application/json'};
+const _uuid = Uuid();
+
+/// Build the v1 API router backed by Hive boxes.
+Router buildApiRouter({
+  required Box<Task> tasks,
+  required Box<Project> projects,
+  required Box<Ritual> rituals,
+}) {
+  final router = Router();
+
+  // ── Health ──
+
+  router.get('/api/v1/health', (Request _) {
+    return Response.ok(
+      jsonEncode({
+        'status': 'ok',
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+        'tasks': tasks.length,
+        'projects': projects.length,
+        'rituals': rituals.length,
+      }),
+      headers: _json,
+    );
+  });
+
+  // ── Tasks ──
+
+  router.get('/api/v1/tasks', (Request request) {
+    var items = tasks.values.toList();
+
+    final projectId = request.url.queryParameters['project_id'];
+    if (projectId != null) {
+      items = items.where((t) => t.projectId == projectId).toList();
+    }
+
+    final status = request.url.queryParameters['status'];
+    if (status != null) {
+      final parsed = TaskStatus.values.where((s) => s.name == status);
+      if (parsed.isEmpty) {
+        return Response(400,
+            body: jsonEncode({'error': 'Invalid status: $status'}),
+            headers: _json);
+      }
+      items = items.where((t) => t.status == parsed.first).toList();
+    }
+
+    final priority = request.url.queryParameters['priority'];
+    if (priority != null) {
+      final parsed = TaskPriority.values.where((p) => p.name == priority);
+      if (parsed.isEmpty) {
+        return Response(400,
+            body: jsonEncode({'error': 'Invalid priority: $priority'}),
+            headers: _json);
+      }
+      items = items.where((t) => t.priority == parsed.first).toList();
+    }
+
+    final limitStr = request.url.queryParameters['limit'];
+    final limit = limitStr != null ? int.tryParse(limitStr) ?? 50 : 50;
+
+    // Sort by modifiedAt descending
+    items.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
+    if (items.length > limit) items = items.sublist(0, limit);
+
+    return Response.ok(jsonEncode(items.map(taskToJson).toList()),
+        headers: _json);
+  });
+
+  router.post('/api/v1/tasks', (Request request) async {
+    final body = await _parseBody(request);
+    if (body == null) return _badJson();
+
+    final title = body['title'] as String?;
+    if (title == null || title.trim().isEmpty) {
+      return Response(400,
+          body: jsonEncode({'error': 'title is required'}), headers: _json);
+    }
+
+    final now = DateTime.now();
+    final id = _uuid.v4();
+    final projectId = body['project_id'] as String?;
+
+    // Auto-generate task key if project exists
+    String? taskKey;
+    if (projectId != null) {
+      final project = projects.get(projectId);
+      if (project != null) {
+        taskKey = project.generateNextTaskKey();
+        await projects.put(projectId, project);
+      }
+    }
+
+    final statusStr = body['status'] as String? ?? 'todo';
+    final priorityStr = body['priority'] as String? ?? 'medium';
+    final taskStatus = TaskStatus.values.firstWhere(
+      (s) => s.name == statusStr,
+      orElse: () => TaskStatus.todo,
+    );
+    final taskPriority = TaskPriority.values.firstWhere(
+      (p) => p.name == priorityStr,
+      orElse: () => TaskPriority.medium,
+    );
+
+    DateTime? dueDate;
+    if (body['due_date'] != null) {
+      dueDate = DateTime.tryParse(body['due_date'] as String);
+    }
+
+    final task = Task(
+      id: id,
+      title: title,
+      description: body['description'] as String?,
+      status: taskStatus,
+      priority: taskPriority,
+      createdAt: now,
+      modifiedAt: now,
+      dueDate: dueDate,
+      projectId: projectId,
+      tags: (body['tags'] as List<dynamic>?)?.cast<String>() ?? [],
+      taskKey: taskKey,
+    );
+
+    await tasks.put(id, task);
+    return Response(201,
+        body: jsonEncode(taskToJson(task)), headers: _json);
+  });
+
+  router.patch('/api/v1/tasks/<id>', (Request request, String id) async {
+    final task = tasks.get(id);
+    if (task == null) {
+      return Response(404,
+          body: jsonEncode({'error': 'Task not found'}), headers: _json);
+    }
+
+    final body = await _parseBody(request);
+    if (body == null) return _badJson();
+
+    if (body.containsKey('title')) {
+      final title = body['title'] as String?;
+      if (title == null || title.trim().isEmpty) {
+        return Response(400,
+            body: jsonEncode({'error': 'title cannot be empty'}),
+            headers: _json);
+      }
+      task.title = title;
+    }
+    if (body.containsKey('description')) {
+      task.description = body['description'] as String?;
+    }
+    if (body.containsKey('status')) {
+      final s = TaskStatus.values.where((v) => v.name == body['status']);
+      if (s.isEmpty) {
+        return Response(400,
+            body: jsonEncode({'error': 'Invalid status'}), headers: _json);
+      }
+      task.status = s.first;
+    }
+    if (body.containsKey('priority')) {
+      final p = TaskPriority.values.where((v) => v.name == body['priority']);
+      if (p.isEmpty) {
+        return Response(400,
+            body: jsonEncode({'error': 'Invalid priority'}), headers: _json);
+      }
+      task.priority = p.first;
+    }
+    if (body.containsKey('due_date')) {
+      task.dueDate = body['due_date'] != null
+          ? DateTime.tryParse(body['due_date'] as String)
+          : null;
+    }
+    if (body.containsKey('tags')) {
+      task.tags = (body['tags'] as List<dynamic>?)?.cast<String>() ?? [];
+    }
+
+    task.modifiedAt = DateTime.now();
+    await tasks.put(id, task);
+
+    return Response.ok(jsonEncode(taskToJson(task)), headers: _json);
+  });
+
+  router.delete('/api/v1/tasks/<id>', (Request request, String id) async {
+    final task = tasks.get(id);
+    if (task == null) {
+      return Response(404,
+          body: jsonEncode({'error': 'Task not found'}), headers: _json);
+    }
+
+    // Clean up dependency references in other tasks
+    for (final other in tasks.values) {
+      if (other.dependsOn.contains(id)) {
+        other.dependsOn = other.dependsOn.where((d) => d != id).toList();
+        await tasks.put(other.id, other);
+      }
+    }
+
+    await tasks.delete(id);
+    return Response(204);
+  });
+
+  // ── Projects ──
+
+  router.get('/api/v1/projects', (Request request) {
+    var items = projects.values.toList();
+
+    final includeArchived =
+        request.url.queryParameters['include_archived'] == 'true';
+    if (!includeArchived) {
+      items = items.where((p) => !p.isArchived).toList();
+    }
+
+    items.sort((a, b) => a.name.compareTo(b.name));
+    return Response.ok(jsonEncode(items.map(projectToJson).toList()),
+        headers: _json);
+  });
+
+  // ── Rituals ──
+
+  router.get('/api/v1/rituals', (Request request) {
+    var items = rituals.values.toList();
+
+    // Reset rituals that need it
+    for (final ritual in items) {
+      ritual.resetIfNeeded();
+    }
+
+    final frequency = request.url.queryParameters['frequency'];
+    if (frequency != null) {
+      final parsed =
+          RitualFrequency.values.where((f) => f.name == frequency);
+      if (parsed.isEmpty) {
+        return Response(400,
+            body: jsonEncode({'error': 'Invalid frequency: $frequency'}),
+            headers: _json);
+      }
+      items = items.where((r) => r.frequency == parsed.first).toList();
+    }
+
+    items.sort((a, b) => a.title.compareTo(b.title));
+    return Response.ok(jsonEncode(items.map(ritualToJson).toList()),
+        headers: _json);
+  });
+
+  // ── Analytics ──
+
+  router.get('/api/v1/analytics', (Request _) {
+    final allTasks = tasks.values.toList();
+    final now = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
+
+    final byStatus = <String, int>{};
+    final byPriority = <String, int>{};
+    int overdue = 0;
+    int dueToday = 0;
+    int blocked = 0;
+    int completedThisWeek = 0;
+
+    for (final task in allTasks) {
+      byStatus[task.status.name] = (byStatus[task.status.name] ?? 0) + 1;
+      byPriority[task.priority.name] =
+          (byPriority[task.priority.name] ?? 0) + 1;
+
+      if (task.dueDate != null && task.status != TaskStatus.done) {
+        if (task.dueDate!.isBefore(now)) overdue++;
+        if (task.dueDate!.year == now.year &&
+            task.dueDate!.month == now.month &&
+            task.dueDate!.day == now.day) {
+          dueToday++;
+        }
+      }
+
+      if (task.dependsOn.isNotEmpty && task.status != TaskStatus.done) {
+        blocked++;
+      }
+
+      if (task.status == TaskStatus.done &&
+          task.modifiedAt.isAfter(weekAgo)) {
+        completedThisWeek++;
+      }
+    }
+
+    return Response.ok(
+      jsonEncode({
+        'total': allTasks.length,
+        'by_status': byStatus,
+        'by_priority': byPriority,
+        'overdue': overdue,
+        'due_today': dueToday,
+        'blocked': blocked,
+        'completed_this_week': completedThisWeek,
+      }),
+      headers: _json,
+    );
+  });
+
+  return router;
+}
+
+/// Parse JSON body, returning null on failure.
+Future<Map<String, dynamic>?> _parseBody(Request request) async {
+  try {
+    final raw = await request.readAsString();
+    return jsonDecode(raw) as Map<String, dynamic>;
+  } catch (_) {
+    return null;
+  }
+}
+
+Response _badJson() => Response(400,
+    body: jsonEncode({'error': 'Invalid JSON body'}),
+    headers: _json);

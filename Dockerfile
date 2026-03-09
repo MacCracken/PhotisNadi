@@ -1,10 +1,10 @@
-# Photis Nadi — Flutter web build on agnosticos base
+# Photis Nadi — Flutter web build + REST API server on agnosticos base
 #
 # Build:  docker build -t photisnadi:latest .
-# Run:    docker run --rm -p 8080:8080 photisnadi:latest
+# Run:    docker run --rm -p 8080:8080 -p 8081:8081 -e PHOTISNADI_API_KEY=changeme photisnadi:latest
 
 # ---------------------------------------------------------------------------
-# Stage 1: Flutter web build
+# Stage 1: Flutter web build + Dart API server compile
 # ---------------------------------------------------------------------------
 FROM debian:bookworm-slim AS builder
 
@@ -29,8 +29,11 @@ RUN flutter pub get
 COPY . .
 RUN flutter build web --release
 
+# Compile the REST API server to a native binary (no Dart runtime needed)
+RUN dart compile exe bin/server.dart -o build/server
+
 # ---------------------------------------------------------------------------
-# Stage 2: Serve on agnosticos with Caddy
+# Stage 2: Serve on agnosticos with Caddy + API server
 # ---------------------------------------------------------------------------
 FROM ghcr.io/maccracken/agnosticos:latest
 
@@ -44,15 +47,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     caddy \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /opt/photisnadi/web \
+RUN mkdir -p /opt/photisnadi/web /opt/photisnadi/data \
     && chown -R agnos:agnos /opt/photisnadi
 
 COPY --from=builder /build/build/web/ /opt/photisnadi/web/
+COPY --from=builder /build/build/server /opt/photisnadi/server
 COPY docker/Caddyfile /opt/photisnadi/Caddyfile
 COPY docker/entrypoint.sh /opt/photisnadi/entrypoint.sh
-RUN chmod +x /opt/photisnadi/entrypoint.sh
+RUN chmod +x /opt/photisnadi/entrypoint.sh /opt/photisnadi/server
 
-EXPOSE 8080
+EXPOSE 8080 8081
 
 USER agnos
 WORKDIR /opt/photisnadi

@@ -1,5 +1,5 @@
 import 'package:hive/hive.dart';
-import '../common/utils.dart';
+import '../common/validators.dart';
 
 part 'task.g.dart';
 
