@@ -80,8 +80,7 @@ class ExportImportService {
 
       // Header
       buffer.writeln(
-        'Key,Title,Status,Priority,Due Date,Tags,Description,'
-        'Estimated Minutes,Tracked Minutes,Created,Project',
+        'Key,Title,Status,Priority,Due Date,Tags,Description,Estimated Minutes,Tracked Minutes,Created,Project',
       );
 
       for (final task in tasks) {

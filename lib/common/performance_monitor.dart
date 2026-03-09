@@ -34,7 +34,7 @@ class PerformanceMonitor {
   }
 
   static void _record(String name, int microseconds) {
-    final metrics = _metrics.putIfAbsent(name, () => _OperationMetrics());
+    final metrics = _metrics.putIfAbsent(name, _OperationMetrics.new);
     metrics.count++;
     metrics.totalMicroseconds += microseconds;
     if (microseconds < metrics.minMicroseconds) {

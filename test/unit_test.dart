@@ -1588,7 +1588,7 @@ void main() {
         }
         return http.Response('OK', 200);
       });
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
 
       final settingsBox = Hive.box('settings');
       await settingsBox.put('yeoman_enabled', true);
@@ -1637,7 +1637,7 @@ void main() {
         return http.Response('Not found', 404);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
 
       final result = await yeomanService.configure(
@@ -1654,7 +1654,7 @@ void main() {
         return http.Response('Unauthorized', 401);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
 
       final result = await yeomanService.configure(
@@ -1676,7 +1676,7 @@ void main() {
         return http.Response('Not found', 404);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',
@@ -1692,7 +1692,7 @@ void main() {
         throw Exception('Connection refused');
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:99999',
@@ -1705,13 +1705,13 @@ void main() {
 
     test('setEnabled persists to settings', () async {
       await yeomanService.initialize();
-      await yeomanService.setEnabled(true);
+      await yeomanService.setEnabled(enabled: true);
 
       final settingsBox = Hive.box('settings');
       expect(settingsBox.get('yeoman_enabled'), true);
       expect(yeomanService.isEnabled, true);
 
-      await yeomanService.setEnabled(false);
+      await yeomanService.setEnabled(enabled: false);
       expect(settingsBox.get('yeoman_enabled'), false);
     });
 
@@ -1736,7 +1736,7 @@ void main() {
         return http.Response('Not found', 404);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',
@@ -1791,7 +1791,7 @@ void main() {
         return http.Response('Not found', 404);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',
@@ -1852,7 +1852,7 @@ void main() {
         return http.Response('Not found', 404);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',
@@ -1871,7 +1871,7 @@ void main() {
         return http.Response('Internal Server Error', 500);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',
@@ -1903,7 +1903,7 @@ void main() {
         return http.Response('Not found', 404);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',
@@ -1934,7 +1934,7 @@ void main() {
         return http.Response('Not found', 404);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',
@@ -1969,7 +1969,7 @@ void main() {
         baseUrl: 'http://localhost:18789',
         apiKey: 'sk-test',
       );
-      await yeomanService.setEnabled(true);
+      await yeomanService.setEnabled(enabled: true);
 
       expect(yeomanService.isConnected, true);
       expect(yeomanService.isEnabled, true);
@@ -2011,7 +2011,7 @@ void main() {
         return http.Response('Not found', 404);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',
@@ -2030,7 +2030,7 @@ void main() {
         return http.Response(jsonEncode({'knowledge': []}), 200);
       });
 
-      yeomanService.setHttpClient(mockClient);
+      yeomanService.httpClient = mockClient;
       await yeomanService.initialize();
       await yeomanService.configure(
         baseUrl: 'http://localhost:18789',

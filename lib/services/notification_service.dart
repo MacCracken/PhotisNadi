@@ -57,7 +57,7 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  Future<void> setNotificationsEnabled(bool enabled) async {
+  Future<void> setNotificationsEnabled({required bool enabled}) async {
     _notificationsEnabled = enabled;
     final settingsBox = Hive.box('settings');
     await settingsBox.put('notifications_enabled', enabled);

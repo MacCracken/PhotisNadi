@@ -81,7 +81,7 @@ class TaskRepository extends HiveRepository<Task> {
     final pid = projectId ?? '';
     final ids = _projectIndex[pid];
     if (ids == null || ids.isEmpty) return [];
-    return ids.map((id) => get(id)).whereType<Task>().toList();
+    return ids.map(get).whereType<Task>().toList();
   }
 
   /// Remove all dependency references to a deleted task.

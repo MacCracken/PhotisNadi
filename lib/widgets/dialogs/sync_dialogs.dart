@@ -218,7 +218,7 @@ class _AccountSection extends StatelessWidget {
           ),
         ),
         TextButton(
-          onPressed: () => syncService.signOut(),
+          onPressed: syncService.signOut,
           child: const Text('Sign Out'),
         ),
       ],
@@ -241,7 +241,7 @@ class _SyncControlsSection extends StatelessWidget {
           subtitle: const Text('Auto-sync every 5 minutes'),
           value: syncService.isSyncEnabled,
           contentPadding: EdgeInsets.zero,
-          onChanged: (value) => syncService.setSyncEnabled(value),
+          onChanged: (value) => syncService.setSyncEnabled(enabled: value),
         ),
         const SizedBox(height: 8),
         Row(
@@ -281,7 +281,7 @@ class _SyncControlsSection extends StatelessWidget {
               tooltip: 'Sync now',
               onPressed: syncService.syncState == SyncState.syncing
                   ? null
-                  : () => syncService.syncAll(),
+                  : syncService.syncAll,
             ),
           ],
         ),
@@ -357,9 +357,7 @@ class _ConflictsSection extends StatelessWidget {
                   child: Text('Keep all remote'),
                 ),
               ],
-              onSelected: (resolution) {
-                syncService.resolveAllConflicts(resolution);
-              },
+              onSelected: syncService.resolveAllConflicts,
               child: const Text(
                 'Resolve all',
                 style: TextStyle(fontSize: 12, color: Colors.blue),

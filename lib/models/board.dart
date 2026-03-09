@@ -68,46 +68,49 @@ class Board extends HiveObject {
 
   // ── Board Templates ──
 
-  static Board defaultBoard(String id) => Board(
-        id: id,
-        title: 'Default',
-        createdAt: DateTime.now(),
-        columns: [
-          BoardColumn(id: 'todo', title: 'To Do', order: 0, status: TaskStatus.todo),
-          BoardColumn(id: 'in_progress', title: 'In Progress', order: 1, status: TaskStatus.inProgress),
-          BoardColumn(id: 'in_review', title: 'In Review', order: 2, status: TaskStatus.inReview),
-          BoardColumn(id: 'blocked', title: 'Blocked', order: 3, status: TaskStatus.blocked),
-          BoardColumn(id: 'done', title: 'Done', order: 4, status: TaskStatus.done),
-        ],
-      );
+  Board.defaultBoard(String id)
+      : this(
+          id: id,
+          title: 'Default',
+          createdAt: DateTime.now(),
+          columns: [
+            BoardColumn(id: 'todo', title: 'To Do', order: 0, status: TaskStatus.todo),
+            BoardColumn(id: 'in_progress', title: 'In Progress', order: 1, status: TaskStatus.inProgress),
+            BoardColumn(id: 'in_review', title: 'In Review', order: 2, status: TaskStatus.inReview),
+            BoardColumn(id: 'blocked', title: 'Blocked', order: 3, status: TaskStatus.blocked),
+            BoardColumn(id: 'done', title: 'Done', order: 4, status: TaskStatus.done),
+          ],
+        );
 
-  static Board bugTrackingBoard(String id) => Board(
-        id: id,
-        title: 'Bug Tracking',
-        createdAt: DateTime.now(),
-        color: '#EF4444',
-        columns: [
-          BoardColumn(id: '${id}_new', title: 'New', order: 0, status: TaskStatus.todo),
-          BoardColumn(id: '${id}_triaged', title: 'Triaged', order: 1, status: TaskStatus.inReview),
-          BoardColumn(id: '${id}_fixing', title: 'Fixing', order: 2, status: TaskStatus.inProgress),
-          BoardColumn(id: '${id}_testing', title: 'Testing', order: 3, status: TaskStatus.blocked),
-          BoardColumn(id: '${id}_closed', title: 'Closed', order: 4, status: TaskStatus.done),
-        ],
-      );
+  Board.bugTracking(String id)
+      : this(
+          id: id,
+          title: 'Bug Tracking',
+          createdAt: DateTime.now(),
+          color: '#EF4444',
+          columns: [
+            BoardColumn(id: '${id}_new', title: 'New', order: 0, status: TaskStatus.todo),
+            BoardColumn(id: '${id}_triaged', title: 'Triaged', order: 1, status: TaskStatus.inReview),
+            BoardColumn(id: '${id}_fixing', title: 'Fixing', order: 2, status: TaskStatus.inProgress),
+            BoardColumn(id: '${id}_testing', title: 'Testing', order: 3, status: TaskStatus.blocked),
+            BoardColumn(id: '${id}_closed', title: 'Closed', order: 4, status: TaskStatus.done),
+          ],
+        );
 
-  static Board sprintBoard(String id) => Board(
-        id: id,
-        title: 'Sprint',
-        createdAt: DateTime.now(),
-        color: '#8B5CF6',
-        columns: [
-          BoardColumn(id: '${id}_backlog', title: 'Backlog', order: 0, status: TaskStatus.todo),
-          BoardColumn(id: '${id}_sprint', title: 'Sprint', order: 1, status: TaskStatus.inReview),
-          BoardColumn(id: '${id}_progress', title: 'In Progress', order: 2, status: TaskStatus.inProgress),
-          BoardColumn(id: '${id}_review', title: 'Review', order: 3, status: TaskStatus.blocked),
-          BoardColumn(id: '${id}_done', title: 'Done', order: 4, status: TaskStatus.done),
-        ],
-      );
+  Board.sprint(String id)
+      : this(
+          id: id,
+          title: 'Sprint',
+          createdAt: DateTime.now(),
+          color: '#8B5CF6',
+          columns: [
+            BoardColumn(id: '${id}_backlog', title: 'Backlog', order: 0, status: TaskStatus.todo),
+            BoardColumn(id: '${id}_sprint', title: 'Sprint', order: 1, status: TaskStatus.inReview),
+            BoardColumn(id: '${id}_progress', title: 'In Progress', order: 2, status: TaskStatus.inProgress),
+            BoardColumn(id: '${id}_review', title: 'Review', order: 3, status: TaskStatus.blocked),
+            BoardColumn(id: '${id}_done', title: 'Done', order: 4, status: TaskStatus.done),
+          ],
+        );
 }
 
 /// Represents a column within a Kanban board.

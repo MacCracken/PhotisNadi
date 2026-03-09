@@ -91,7 +91,7 @@ class YeomanService extends ChangeNotifier {
   }
 
   /// Enable or disable SecureYeoman sync.
-  Future<void> setEnabled(bool enabled) async {
+  Future<void> setEnabled({required bool enabled}) async {
     _isEnabled = enabled;
     final settingsBox = Hive.box('settings');
     await settingsBox.put('yeoman_enabled', enabled);
@@ -654,7 +654,10 @@ class YeomanService extends ChangeNotifier {
   }
 
   @visibleForTesting
-  void setHttpClient(http.Client client) {
+  http.Client get httpClient => _httpClient;
+
+  @visibleForTesting
+  set httpClient(http.Client client) {
     _httpClient = client;
   }
 

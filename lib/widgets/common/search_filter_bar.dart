@@ -233,7 +233,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 onPressed: () => taskService.clearFilterTags(),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, 0),
+                  minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: const Text('Clear', style: TextStyle(fontSize: 11)),

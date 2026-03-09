@@ -66,10 +66,10 @@ void showAddBoardDialog(BuildContext context, Project project) {
               Board board;
               switch (selectedTemplate) {
                 case 'bug':
-                  board = Board.bugTrackingBoard(id);
+                  board = Board.bugTracking(id);
                   board.title = nameController.text.trim();
                 case 'sprint':
-                  board = Board.sprintBoard(id);
+                  board = Board.sprint(id);
                   board.title = nameController.text.trim();
                 default:
                   board = Board.defaultBoard(id);

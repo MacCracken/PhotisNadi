@@ -340,7 +340,7 @@ class SyncService extends ChangeNotifier {
   }
 
   // Sync enable/disable
-  Future<void> setSyncEnabled(bool enabled) async {
+  Future<void> setSyncEnabled({required bool enabled}) async {
     _isSyncEnabled = enabled;
     final settingsBox = Hive.box('settings');
     await settingsBox.put('sync_enabled', enabled);

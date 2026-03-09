@@ -212,7 +212,7 @@ class KanbanBoardState extends State<KanbanBoard> {
   }
 
   FocusNode _getOrCreateFocusNode(String taskId) {
-    return _taskFocusNodes.putIfAbsent(taskId, () => FocusNode());
+    return _taskFocusNodes.putIfAbsent(taskId, FocusNode.new);
   }
 
   void _navigateTask(int delta) {
@@ -305,10 +305,10 @@ class KanbanBoardState extends State<KanbanBoard> {
           buildDefaultDragHandles: false,
           itemCount: columns.length,
           onReorder: (oldIndex, newIndex) {
-            if (newIndex > oldIndex) newIndex--;
+            final adjustedIndex = newIndex > oldIndex ? newIndex - 1 : newIndex;
             final columnIds = columns.map((c) => c.id).toList();
             final id = columnIds.removeAt(oldIndex);
-            columnIds.insert(newIndex, id);
+            columnIds.insert(adjustedIndex, id);
             context
                 .read<TaskService>()
                 .reorderColumns(selectedProjectId, columnIds);
