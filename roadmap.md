@@ -9,8 +9,28 @@ Cross-platform productivity app combining Kanban-style task management with dail
 
 ## Engineering Backlog
 
+### AGNOS Marketplace Onboarding
+
+Items identified during cross-project review (2026-03-09). AGNOS-side work (recipe update, version bump, agpkg command, API server install) is done.
+
+| Item | Effort | Status | Description |
+|------|--------|--------|-------------|
+| Build Flutter Linux bundle | 30 min | Done | CI builds this; local verification pending next `flutter build linux --release` run |
+| Add app icon for marketplace | 30 min | Done | Added `assets/images/photisnadi.svg` and `photisnadi.png` (256x256). Install step: `cp` to `$PKG/usr/share/icons/` |
+| Agent registration with daimon | 1 hour | Done | `lib/server/agnos.dart` — registers via `POST /v1/agents/register` when `AGNOS_AGENT_REGISTRY_URL` is set, heartbeats every 30s, deregisters on SIGINT/SIGTERM |
+| MCP tool registration with daimon | 1 hour | Done | Registers all 6 MCP tools via `POST /v1/mcp/tools` after agent registration succeeds |
+| Audit event forwarding | 1 hour | Done | Task create/update/delete in `api.dart` forward events to `POST /v1/audit/forward` when `AGNOS_AUDIT_URL` is set |
+| Verify sandbox in AGNOS | 2 hours | Not started | Test the app inside AGNOS with Landlock/seccomp sandbox active. Verify Supabase sync works through `*.supabase.co` allowed hosts. Verify Hive data persistence in `~/.local/share/photisnadi/` |
+
+**AGNOS-side work (done):**
+- Recipe bumped to `2026.3.9`, license corrected to MIT
+- `agpkg pack-flutter` command uncommented and ready
+- Dart API server install step added (`dart compile exe bin/server.dart`)
+- Supabase hosts already restricted (`*.supabase.co`, `*.supabase.in`)
+- Wayland requirements declared (core, xdg-shell)
+
 ### Test Coverage
-- **Current**: 52.1% (1818/3492 lines, 389 tests)
+- **Current**: 52.1% (1818/3492 lines, 396 tests)
 - **Target**: 60%
 - **Well-covered**: Models, validators, serializers, auth middleware, export/import, filter/sort, theme service, board/column management, task CRUD, rituals, tags, sync parsing, performance monitor, Hive persistence round-trips
 - **Gaps**: Widget tests, sync service integration (376 lines), dialog flows, desktop integration

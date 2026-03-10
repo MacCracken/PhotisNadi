@@ -13,6 +13,7 @@ import 'package:photisnadi/services/yeoman_service.dart';
 import 'package:photisnadi/services/theme_service.dart';
 import 'package:photisnadi/common/utils.dart';
 import 'package:photisnadi/services/export_import_service.dart';
+import 'package:photisnadi/server/agnos.dart';
 import 'package:photisnadi/server/serializers.dart';
 import 'package:photisnadi/server/auth.dart';
 import 'package:photisnadi/common/performance_monitor.dart';
@@ -5804,6 +5805,216 @@ void main() {
       expect(loadedTags.first.color, '#AABB00');
 
       await tearDownTestHive();
+    });
+  });
+
+  group('AGNOS Integration Tests', () {
+    test('registerAgent sends correct payload and starts heartbeat', () async {
+      final requests = <http.Request>[];
+      final mockClient = http_testing.MockClient((request) async {
+        requests.add(request);
+        if (request.url.path.contains('/v1/agents/register')) {
+          return http.Response(
+            jsonEncode({'agent_id': 'test-agent-123'}),
+            201,
+          );
+        }
+        return http.Response('', 200);
+      });
+
+      final agnos = AgnosIntegration(
+        apiUrl: 'http://localhost:8081',
+        apiKey: 'test-key',
+        agentRegistryUrl: 'http://localhost:9000',
+        httpClient: mockClient,
+      );
+
+      final result = await agnos.registerAgent();
+      expect(result, isTrue);
+      expect(agnos.isRegistered, isTrue);
+
+      // Verify registration request
+      final regRequest = requests.first;
+      expect(regRequest.method, 'POST');
+      expect(regRequest.url.path, '/v1/agents/register');
+      final body = jsonDecode(regRequest.body);
+      expect(body['name'], 'photisnadi');
+      expect(body['display_name'], 'Photis Nadi');
+      expect(body['endpoint'], 'http://localhost:8081');
+      expect(body['capabilities'], contains('tasks'));
+
+      await agnos.shutdown();
+    });
+
+    test('registerAgent handles failure gracefully', () async {
+      final mockClient = http_testing.MockClient((request) async {
+        return http.Response('{"error":"unavailable"}', 503);
+      });
+
+      final agnos = AgnosIntegration(
+        apiUrl: 'http://localhost:8081',
+        apiKey: 'test-key',
+        agentRegistryUrl: 'http://localhost:9000',
+        httpClient: mockClient,
+      );
+
+      final result = await agnos.registerAgent();
+      expect(result, isFalse);
+      expect(agnos.isRegistered, isFalse);
+
+      await agnos.shutdown();
+    });
+
+    test('deregisterAgent sends DELETE and clears state', () async {
+      final requests = <http.Request>[];
+      final mockClient = http_testing.MockClient((request) async {
+        requests.add(request);
+        if (request.url.path.contains('/v1/agents/register')) {
+          return http.Response(
+            jsonEncode({'agent_id': 'agent-456'}),
+            201,
+          );
+        }
+        return http.Response('', 200);
+      });
+
+      final agnos = AgnosIntegration(
+        apiUrl: 'http://localhost:8081',
+        apiKey: 'test-key',
+        agentRegistryUrl: 'http://localhost:9000',
+        httpClient: mockClient,
+      );
+
+      await agnos.registerAgent();
+      expect(agnos.isRegistered, isTrue);
+
+      await agnos.deregisterAgent();
+      expect(agnos.isRegistered, isFalse);
+
+      final deleteReq =
+          requests.where((r) => r.method == 'DELETE').firstOrNull;
+      expect(deleteReq, isNotNull);
+      expect(deleteReq!.url.path, '/v1/agents/agent-456');
+    });
+
+    test('registerMcpTools sends all 6 tools to daimon', () async {
+      final requests = <http.Request>[];
+      final mockClient = http_testing.MockClient((request) async {
+        requests.add(request);
+        if (request.url.path.contains('/v1/agents/register')) {
+          return http.Response(
+            jsonEncode({'agent_id': 'agent-mcp'}),
+            201,
+          );
+        }
+        return http.Response('', 200);
+      });
+
+      final agnos = AgnosIntegration(
+        apiUrl: 'http://localhost:8081',
+        apiKey: 'test-key',
+        agentRegistryUrl: 'http://localhost:9000',
+        httpClient: mockClient,
+      );
+
+      await agnos.registerAgent();
+      final result = await agnos.registerMcpTools();
+      expect(result, isTrue);
+
+      final mcpReq = requests
+          .where((r) => r.url.path.contains('/v1/mcp/tools'))
+          .first;
+      final body = jsonDecode(mcpReq.body);
+      expect(body['server_name'], 'Photis Nadi');
+      expect(body['agent_id'], 'agent-mcp');
+      expect(body['tools'], hasLength(6));
+
+      final toolNames =
+          (body['tools'] as List).map((t) => t['name']).toList();
+      expect(toolNames, contains('photis_list_tasks'));
+      expect(toolNames, contains('photis_create_task'));
+      expect(toolNames, contains('photis_update_task'));
+      expect(toolNames, contains('photis_list_projects'));
+      expect(toolNames, contains('photis_list_rituals'));
+      expect(toolNames, contains('photis_task_analytics'));
+
+      await agnos.shutdown();
+    });
+
+    test('forwardAuditEvent sends correct payload', () async {
+      final requests = <http.Request>[];
+      final mockClient = http_testing.MockClient((request) async {
+        requests.add(request);
+        return http.Response('', 200);
+      });
+
+      final agnos = AgnosIntegration(
+        apiUrl: 'http://localhost:8081',
+        apiKey: 'test-key',
+        auditUrl: 'http://localhost:8090',
+        httpClient: mockClient,
+      );
+
+      await agnos.forwardAuditEvent(
+        action: 'create',
+        entityType: 'task',
+        entityId: 'task-789',
+        payload: {'title': 'Test Task'},
+      );
+
+      expect(requests, hasLength(1));
+      final req = requests.first;
+      expect(req.url.toString(), 'http://localhost:8090/v1/audit/forward');
+      final body = jsonDecode(req.body);
+      expect(body['source'], 'photisnadi');
+      expect(body['action'], 'create');
+      expect(body['entity_type'], 'task');
+      expect(body['entity_id'], 'task-789');
+      expect(body['payload']['title'], 'Test Task');
+      expect(body['timestamp'], isNotNull);
+
+      agnos.shutdown();
+    });
+
+    test('forwardAuditEvent is no-op when audit URL is not set', () async {
+      final requests = <http.Request>[];
+      final mockClient = http_testing.MockClient((request) async {
+        requests.add(request);
+        return http.Response('', 200);
+      });
+
+      final agnos = AgnosIntegration(
+        apiUrl: 'http://localhost:8081',
+        apiKey: 'test-key',
+        httpClient: mockClient,
+      );
+
+      await agnos.forwardAuditEvent(
+        action: 'create',
+        entityType: 'task',
+        entityId: 'task-000',
+      );
+
+      expect(requests, isEmpty);
+      agnos.shutdown();
+    });
+
+    test('isAgentRegistryEnabled and isAuditEnabled reflect config', () {
+      final withAll = AgnosIntegration(
+        apiUrl: 'http://localhost:8081',
+        apiKey: 'k',
+        agentRegistryUrl: 'http://localhost:9000',
+        auditUrl: 'http://localhost:8090',
+      );
+      expect(withAll.isAgentRegistryEnabled, isTrue);
+      expect(withAll.isAuditEnabled, isTrue);
+
+      final withNone = AgnosIntegration(
+        apiUrl: 'http://localhost:8081',
+        apiKey: 'k',
+      );
+      expect(withNone.isAgentRegistryEnabled, isFalse);
+      expect(withNone.isAuditEnabled, isFalse);
     });
   });
 }

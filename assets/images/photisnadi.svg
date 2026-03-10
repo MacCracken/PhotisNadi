@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect x="8" y="8" width="240" height="240" rx="48" fill="url(#bg)"/>
+  <!-- Light/flame symbol (photis = light) -->
+  <ellipse cx="128" cy="108" rx="36" ry="52" fill="#fbbf24" opacity="0.9"/>
+  <ellipse cx="128" cy="100" rx="22" ry="36" fill="#fde68a"/>
+  <ellipse cx="128" cy="94" rx="10" ry="20" fill="#fffbeb"/>
+  <!-- Base/stand -->
+  <rect x="112" y="156" width="32" height="8" rx="4" fill="#e0e7ff"/>
+  <!-- Kanban lines (nadi = flow/channel) -->
+  <rect x="68" y="184" width="36" height="4" rx="2" fill="#c7d2fe"/>
+  <rect x="110" y="184" width="36" height="4" rx="2" fill="#c7d2fe"/>
+  <rect x="152" y="184" width="36" height="4" rx="2" fill="#c7d2fe"/>
+  <rect x="68" y="194" width="36" height="4" rx="2" fill="#a5b4fc" opacity="0.7"/>
+  <rect x="110" y="194" width="36" height="4" rx="2" fill="#a5b4fc" opacity="0.7"/>
+  <rect x="152" y="194" width="36" height="4" rx="2" fill="#a5b4fc" opacity="0.7"/>
+  <rect x="68" y="204" width="36" height="4" rx="2" fill="#818cf8" opacity="0.5"/>
+  <rect x="110" y="204" width="36" height="4" rx="2" fill="#818cf8" opacity="0.5"/>
+</svg>

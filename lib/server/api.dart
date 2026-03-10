@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../models/task.dart';
 import '../models/project.dart';
 import '../models/ritual.dart';
+import 'agnos.dart';
 import 'serializers.dart';
 
 const _json = {'content-type': 'application/json'};
@@ -16,6 +17,7 @@ Router buildApiRouter({
   required Box<Task> tasks,
   required Box<Project> projects,
   required Box<Ritual> rituals,
+  AgnosIntegration? agnos,
 }) {
   final router = Router();
 
@@ -136,6 +138,14 @@ Router buildApiRouter({
     );
 
     await tasks.put(id, task);
+
+    agnos?.forwardAuditEvent(
+      action: 'create',
+      entityType: 'task',
+      entityId: id,
+      payload: {'title': task.title, 'project_id': projectId},
+    );
+
     return Response(201, body: jsonEncode(taskToJson(task)), headers: _json);
   });
 
@@ -189,6 +199,13 @@ Router buildApiRouter({
     task.modifiedAt = DateTime.now();
     await tasks.put(id, task);
 
+    agnos?.forwardAuditEvent(
+      action: 'update',
+      entityType: 'task',
+      entityId: id,
+      payload: body,
+    );
+
     return Response.ok(jsonEncode(taskToJson(task)), headers: _json);
   });
 
@@ -208,6 +225,13 @@ Router buildApiRouter({
     }
 
     await tasks.delete(id);
+
+    agnos?.forwardAuditEvent(
+      action: 'delete',
+      entityType: 'task',
+      entityId: id,
+    );
+
     return Response(204);
   });
 
