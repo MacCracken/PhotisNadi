@@ -89,12 +89,10 @@ class AgnosIntegration {
     if (_agentRegistryUrl == null || _agentId == null) return;
 
     try {
-      await _httpClient
-          .delete(
-            Uri.parse('$_agentRegistryUrl/v1/agents/$_agentId'),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 5));
+      await _httpClient.delete(
+        Uri.parse('$_agentRegistryUrl/v1/agents/$_agentId'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 5));
       stdout.writeln('Deregistered from AGNOS daimon');
     } catch (e) {
       stderr.writeln('AGNOS agent deregistration error: $e');
@@ -209,10 +207,7 @@ class AgnosIntegration {
           'inputSchema': {
             'type': 'object',
             'properties': {
-              'task_id': {
-                'type': 'string',
-                'description': 'Task ID to update'
-              },
+              'task_id': {'type': 'string', 'description': 'Task ID to update'},
               'title': {'type': 'string'},
               'description': {'type': 'string'},
               'status': {
@@ -290,8 +285,8 @@ class AgnosIntegration {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode < 300) {
-        stdout.writeln(
-            'Registered ${tools.length} MCP tools with AGNOS daimon');
+        stdout
+            .writeln('Registered ${tools.length} MCP tools with AGNOS daimon');
         return true;
       } else {
         stderr.writeln(

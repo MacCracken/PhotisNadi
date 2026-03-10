@@ -5891,8 +5891,7 @@ void main() {
       await agnos.deregisterAgent();
       expect(agnos.isRegistered, isFalse);
 
-      final deleteReq =
-          requests.where((r) => r.method == 'DELETE').firstOrNull;
+      final deleteReq = requests.where((r) => r.method == 'DELETE').firstOrNull;
       expect(deleteReq, isNotNull);
       expect(deleteReq!.url.path, '/v1/agents/agent-456');
     });
@@ -5921,16 +5920,14 @@ void main() {
       final result = await agnos.registerMcpTools();
       expect(result, isTrue);
 
-      final mcpReq = requests
-          .where((r) => r.url.path.contains('/v1/mcp/tools'))
-          .first;
+      final mcpReq =
+          requests.where((r) => r.url.path.contains('/v1/mcp/tools')).first;
       final body = jsonDecode(mcpReq.body);
       expect(body['server_name'], 'Photis Nadi');
       expect(body['agent_id'], 'agent-mcp');
       expect(body['tools'], hasLength(6));
 
-      final toolNames =
-          (body['tools'] as List).map((t) => t['name']).toList();
+      final toolNames = (body['tools'] as List).map((t) => t['name']).toList();
       expect(toolNames, contains('photis_list_tasks'));
       expect(toolNames, contains('photis_create_task'));
       expect(toolNames, contains('photis_update_task'));
