@@ -10,12 +10,18 @@ import 'package:photisnadi/models/task.dart';
 import 'package:photisnadi/server/agnos.dart';
 import 'package:photisnadi/server/api.dart';
 import 'package:photisnadi/server/auth.dart';
+import 'package:uuid/uuid.dart';
 
 Future<void> main() async {
-  final apiKey = Platform.environment['PHOTISNADI_API_KEY'];
-  if (apiKey == null || apiKey.isEmpty) {
-    stderr.writeln('PHOTISNADI_API_KEY environment variable is required');
-    exit(1);
+  final envKey = Platform.environment['PHOTISNADI_API_KEY'];
+  final bool preSharedKey = envKey != null && envKey.isNotEmpty;
+  final apiKey = preSharedKey ? envKey : const Uuid().v4();
+
+  if (preSharedKey) {
+    stdout.writeln('Using pre-shared API key from PHOTISNADI_API_KEY');
+  } else {
+    stdout.writeln('No PHOTISNADI_API_KEY set — generated key, '
+        'use /api/v1/handshake to claim it');
   }
 
   final dataDir =
@@ -72,6 +78,8 @@ Future<void> main() async {
     projects: projectBox,
     rituals: ritualBox,
     agnos: agnos,
+    apiKey: apiKey,
+    allowHandshake: !preSharedKey,
   );
 
   // Pipeline: logging + auth + CORS + router

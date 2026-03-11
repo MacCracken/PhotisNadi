@@ -18,8 +18,11 @@ Router buildApiRouter({
   required Box<Project> projects,
   required Box<Ritual> rituals,
   AgnosIntegration? agnos,
+  required String apiKey,
+  bool allowHandshake = false,
 }) {
   final router = Router();
+  bool handshakeClaimed = false;
 
   // ── Health ──
 
@@ -31,6 +34,34 @@ Router buildApiRouter({
         'tasks': tasks.length,
         'projects': projects.length,
         'rituals': rituals.length,
+      }),
+      headers: _json,
+    );
+  });
+
+  // ── Handshake ──
+
+  router.post('/api/v1/handshake', (Request request) async {
+    if (!allowHandshake) {
+      return Response(404,
+          body: jsonEncode({'error': 'Handshake not available — '
+              'API key was pre-configured via PHOTISNADI_API_KEY'}),
+          headers: _json);
+    }
+
+    if (handshakeClaimed) {
+      return Response(403,
+          body: jsonEncode(
+              {'error': 'Handshake already claimed'}),
+          headers: _json);
+    }
+
+    handshakeClaimed = true;
+    return Response.ok(
+      jsonEncode({
+        'api_key': apiKey,
+        'message': 'API key granted. Use Authorization: Bearer <key> '
+            'for subsequent requests.',
       }),
       headers: _json,
     );

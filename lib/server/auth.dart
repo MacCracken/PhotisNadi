@@ -8,8 +8,9 @@ import 'package:shelf/shelf.dart';
 Middleware apiKeyAuth(String apiKey) {
   return (Handler innerHandler) {
     return (Request request) {
-      // Health check is public
-      if (request.url.path == 'api/v1/health') {
+      // Health check and handshake are public
+      if (request.url.path == 'api/v1/health' ||
+          request.url.path == 'api/v1/handshake') {
         return innerHandler(request);
       }
 
