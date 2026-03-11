@@ -44,12 +44,14 @@ LABEL org.opencontainers.image.source="https://github.com/maccracken/photisnadi"
 
 USER root
 
+RUN groupadd -g 1005 photisnadi && useradd -u 1005 -g photisnadi -m -s /bin/bash photisnadi
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     caddy \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/photisnadi/web /opt/photisnadi/data \
-    && chown -R agnos:agnos /opt/photisnadi
+    && chown -R photisnadi:photisnadi /opt/photisnadi
 
 COPY --from=builder /build/build/web/ /opt/photisnadi/web/
 COPY --from=builder /build/build/server_bundle/bundle/ /opt/photisnadi/server_bundle/
@@ -59,7 +61,7 @@ RUN chmod +x /opt/photisnadi/entrypoint.sh /opt/photisnadi/server_bundle/bin/ser
 
 EXPOSE 8080 8081
 
-USER agnos
+USER photisnadi
 WORKDIR /opt/photisnadi
 
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
