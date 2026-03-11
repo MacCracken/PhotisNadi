@@ -44,15 +44,16 @@ Router buildApiRouter({
   router.post('/api/v1/handshake', (Request request) async {
     if (!allowHandshake) {
       return Response(404,
-          body: jsonEncode({'error': 'Handshake not available — '
-              'API key was pre-configured via PHOTISNADI_API_KEY'}),
+          body: jsonEncode({
+            'error': 'Handshake not available — '
+                'API key was pre-configured via PHOTISNADI_API_KEY'
+          }),
           headers: _json);
     }
 
     if (handshakeClaimed) {
       return Response(403,
-          body: jsonEncode(
-              {'error': 'Handshake already claimed'}),
+          body: jsonEncode({'error': 'Handshake already claimed'}),
           headers: _json);
     }
 
