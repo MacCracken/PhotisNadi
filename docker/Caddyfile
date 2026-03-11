@@ -1,13 +1,19 @@
 :8080 {
-	root * /opt/photisnadi/web
-	file_server
+	# API requests go to the Dart API server
+	handle /api/* {
+		reverse_proxy localhost:8081
+	}
 
-	# SPA fallback — serve index.html for unmatched routes
-	try_files {path} /index.html
+	# Everything else is the Flutter SPA
+	handle {
+		root * /opt/photisnadi/web
+		try_files {path} /index.html
+		file_server
 
-	# Cache static assets
-	@static path *.js *.css *.woff2 *.png *.svg *.ico
-	header @static Cache-Control "public, max-age=31536000, immutable"
+		# Cache static assets
+		@static path *.js *.css *.woff2 *.png *.svg *.ico
+		header @static Cache-Control "public, max-age=31536000, immutable"
+	}
 
 	log {
 		output stderr

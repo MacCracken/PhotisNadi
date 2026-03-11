@@ -29,6 +29,10 @@ Items identified during cross-project review (2026-03-09). AGNOS-side work (reci
 - Supabase hosts already restricted (`*.supabase.co`, `*.supabase.in`)
 - Wayland requirements declared (core, xdg-shell)
 
+### ~~Caddy API Reverse Proxy~~ ✅ Done
+
+Fixed. Caddyfile now uses `handle /api/*` block to proxy to the Dart API server on localhost:8081, with a separate `handle` block for the Flutter SPA. API endpoints (health, handshake, tasks, etc.) are accessible on port 8080 alongside the web UI.
+
 ### Test Coverage
 - **Current**: 52.1% (1818/3492 lines, 396 tests)
 - **Target**: 60%
