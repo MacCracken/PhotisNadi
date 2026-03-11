@@ -2,6 +2,34 @@
 
 All notable changes to Photis Nadi will be documented in this file.
 
+## [2026.3.10-1]
+
+### Fixed
+- API handshake authentication flow (`/api/v1/handshake` endpoint)
+- Server auto-generates API key when `PHOTISNADI_API_KEY` not set, claimable via handshake
+- Auth middleware allows unauthenticated access to handshake endpoint
+- Caddy reverse proxy: `/api/*` requests now proxied to Dart API server on port 8081
+- Docker entrypoint always starts API server (no longer gated on `PHOTISNADI_API_KEY`)
+
+---
+
+## [2026.3.10]
+
+### Added
+- AGNOS daimon integration (`lib/server/agnos.dart`):
+  - Agent registration and heartbeats with daimon agent runtime
+  - MCP tool registration (6 tools) with daimon's MCP server
+  - Audit event forwarding for task CRUD operations
+  - Graceful shutdown with agent deregistration
+  - Configured via `AGNOS_AGENT_REGISTRY_URL` and `AGNOS_AUDIT_URL` env vars
+- Application icon assets (`photisnadi.png`, `photisnadi.svg`)
+
+### Fixed
+- Application icon rendering
+- Lint and format compliance repairs
+
+---
+
 ## [2026.3.9]
 
 ### Added

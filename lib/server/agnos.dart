@@ -51,7 +51,7 @@ class AgnosIntegration {
               'display_name': 'Photis Nadi',
               'description':
                   'Task management and ritual tracking productivity app',
-              'version': '2026.2.16',
+              'version': '2026.3.10-1',
               'endpoint': _apiUrl,
               'health_endpoint': '$_apiUrl/api/v1/health',
               'capabilities': [
