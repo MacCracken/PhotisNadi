@@ -87,7 +87,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         RELEASE_VERSION: ${{ needs.version.outputs.version }}
-      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-linux-x64.tar.gz --clobber
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-linux-x64.tar.gz --clobber --repo "${{ github.repository }}"
 
   build-windows:
     runs-on: ubuntu-latest
@@ -108,7 +108,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         RELEASE_VERSION: ${{ needs.version.outputs.version }}
-      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-windows-x64.zip --clobber
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-windows-x64.zip --clobber --repo "${{ github.repository }}"
 
   build-macos:
     runs-on: ubuntu-latest
@@ -129,7 +129,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         RELEASE_VERSION: ${{ needs.version.outputs.version }}
-      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-macos-universal.zip --clobber
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-macos-universal.zip --clobber --repo "${{ github.repository }}"
 
   build-web:
     runs-on: ubuntu-latest
@@ -149,7 +149,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         RELEASE_VERSION: ${{ needs.version.outputs.version }}
-      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-web.tar.gz --clobber
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-*-web.tar.gz --clobber --repo "${{ github.repository }}"
 
   build-container:
     runs-on: ubuntu-latest
