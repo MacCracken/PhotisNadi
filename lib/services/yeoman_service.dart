@@ -27,8 +27,11 @@ class YeomanService extends ChangeNotifier {
   YeomanSyncState _syncState = YeomanSyncState.idle;
   String? _syncError;
 
+  final bool _ownsHttpClient;
+
   YeomanService({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+      : _httpClient = httpClient ?? http.Client(),
+        _ownsHttpClient = httpClient == null;
 
   bool get isInitialized => _isInitialized;
   bool get isEnabled => _isEnabled;
@@ -722,6 +725,7 @@ class YeomanService extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _stopPeriodicSync();
+    if (_ownsHttpClient) _httpClient.close();
     super.dispose();
   }
 }

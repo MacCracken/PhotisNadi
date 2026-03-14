@@ -20,7 +20,8 @@ Items identified during cross-project review (2026-03-09). AGNOS-side work (reci
 | Agent registration with daimon | 1 hour | Done | `lib/server/agnos.dart` — registers via `POST /v1/agents/register` when `AGNOS_AGENT_REGISTRY_URL` is set, heartbeats every 30s, deregisters on SIGINT/SIGTERM |
 | MCP tool registration with daimon | 1 hour | Done | Registers all 6 MCP tools via `POST /v1/mcp/tools` after agent registration succeeds |
 | Audit event forwarding | 1 hour | Done | Task create/update/delete in `api.dart` forward events to `POST /v1/audit/forward` when `AGNOS_AUDIT_URL` is set |
-| Verify sandbox in AGNOS | 2 hours | Not started | Test the app inside AGNOS with Landlock/seccomp sandbox active. Verify Supabase sync works through `*.supabase.co` allowed hosts. Verify Hive data persistence in `~/.local/share/photisnadi/` |
+| Verify sandbox in AGNOS (Docker) | 2 hours | Done | Docker container verified 2026-03-14: API server + Caddy start cleanly, health endpoints respond, auth rejects bad/missing tokens (401/403), Hive CRUD works, data persists across restart, runs as non-root (uid 1005), web UI served. |
+| Verify sandbox in AGNOS (qemu/baremetal) | 1 hour | Not started | Retest on qemu and baremetal with Landlock/seccomp sandbox active. Verify Supabase sync works through `*.supabase.co` allowed hosts. Docker cannot exercise Landlock/seccomp — needs real AGNOS environment. |
 
 **AGNOS-side work (done):**
 - Recipe bumped to `2026.3.9`, license corrected to MIT

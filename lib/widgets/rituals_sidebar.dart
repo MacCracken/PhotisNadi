@@ -21,14 +21,6 @@ class RitualsSidebar extends StatefulWidget {
 
 class _RitualsSidebarState extends State<RitualsSidebar> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TaskService>().init();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Consumer<TaskService>(
       builder: (context, taskService, child) {
@@ -148,6 +140,7 @@ class _RitualsSidebarState extends State<RitualsSidebar> {
       itemBuilder: (context, index) {
         final ritual = rituals[index];
         return Container(
+          key: ValueKey(ritual.id),
           height: 50,
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           child: GestureDetector(

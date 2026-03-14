@@ -72,7 +72,7 @@ class AgnosIntegration {
         return true;
       } else {
         stderr.writeln(
-            'AGNOS agent registration failed: ${response.statusCode} ${response.body}');
+            'AGNOS agent registration failed: ${response.statusCode}');
         return false;
       }
     } catch (e) {
@@ -290,7 +290,7 @@ class AgnosIntegration {
         return true;
       } else {
         stderr.writeln(
-            'AGNOS MCP tool registration failed: ${response.statusCode} ${response.body}');
+            'AGNOS MCP tool registration failed: ${response.statusCode}');
         return false;
       }
     } catch (e) {

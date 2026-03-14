@@ -127,7 +127,17 @@ mixin ColumnMixin on ChangeNotifier {
     }
   }
 
-  TaskStatus getColumnStatus(String columnId) {
+  TaskStatus getColumnStatus(String columnId, {String? projectId}) {
+    // If projectId is provided, search only that project (O(c) instead of O(p*c))
+    if (projectId != null) {
+      final project = projectRepo.get(projectId);
+      if (project != null) {
+        for (final column in project.activeColumns) {
+          if (column.id == columnId) return column.status;
+        }
+      }
+      return TaskStatus.todo;
+    }
     for (final project in projectRepo.all) {
       for (final column in project.activeColumns) {
         if (column.id == columnId) {

@@ -51,13 +51,14 @@ Router buildApiRouter({
           headers: _json);
     }
 
+    // Atomic claim: test-and-set to prevent race condition
     if (handshakeClaimed) {
       return Response(403,
           body: jsonEncode({'error': 'Handshake already claimed'}),
           headers: _json);
     }
-
     handshakeClaimed = true;
+
     return Response.ok(
       jsonEncode({
         'api_key': apiKey,
@@ -83,7 +84,7 @@ Router buildApiRouter({
       final parsed = TaskStatus.values.where((s) => s.name == status);
       if (parsed.isEmpty) {
         return Response(400,
-            body: jsonEncode({'error': 'Invalid status: $status'}),
+            body: jsonEncode({'error': 'Invalid status value'}),
             headers: _json);
       }
       items = items.where((t) => t.status == parsed.first).toList();
@@ -94,14 +95,15 @@ Router buildApiRouter({
       final parsed = TaskPriority.values.where((p) => p.name == priority);
       if (parsed.isEmpty) {
         return Response(400,
-            body: jsonEncode({'error': 'Invalid priority: $priority'}),
+            body: jsonEncode({'error': 'Invalid priority value'}),
             headers: _json);
       }
       items = items.where((t) => t.priority == parsed.first).toList();
     }
 
     final limitStr = request.url.queryParameters['limit'];
-    final limit = limitStr != null ? int.tryParse(limitStr) ?? 50 : 50;
+    final limit =
+        (limitStr != null ? int.tryParse(limitStr) ?? 50 : 50).clamp(0, 1000);
 
     // Sort by modifiedAt descending
     items.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
@@ -225,7 +227,11 @@ Router buildApiRouter({
           : null;
     }
     if (body.containsKey('tags')) {
-      task.tags = (body['tags'] as List<dynamic>?)?.cast<String>() ?? [];
+      task.tags = (body['tags'] as List<dynamic>?)
+              ?.whereType<String>()
+              .where((t) => t.isNotEmpty)
+              .toList() ??
+          [];
     }
 
     task.modifiedAt = DateTime.now();
@@ -298,7 +304,7 @@ Router buildApiRouter({
       final parsed = RitualFrequency.values.where((f) => f.name == frequency);
       if (parsed.isEmpty) {
         return Response(400,
-            body: jsonEncode({'error': 'Invalid frequency: $frequency'}),
+            body: jsonEncode({'error': 'Invalid frequency value'}),
             headers: _json);
       }
       items = items.where((r) => r.frequency == parsed.first).toList();

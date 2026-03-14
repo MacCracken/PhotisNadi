@@ -1094,6 +1094,12 @@ class SyncService extends ChangeNotifier {
     _authSubscription?.cancel();
     _cleanupChannels();
     _stopPeriodicSync();
+    if (_isInitialized) {
+      _taskBox.close();
+      _ritualBox.close();
+      _projectBox.close();
+      _tagBox.close();
+    }
     super.dispose();
   }
 }

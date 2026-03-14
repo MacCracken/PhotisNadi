@@ -318,11 +318,16 @@ mixin TaskCrudMixin on ChangeNotifier {
           case 'weekly':
             nextDue = task.dueDate!.add(const Duration(days: 7));
           case 'monthly':
-            nextDue = DateTime(
-              task.dueDate!.year,
-              task.dueDate!.month + 1,
-              task.dueDate!.day,
-            );
+            // Clamp day to the last day of the next month to avoid overflow
+            // (e.g., Jan 31 -> Feb 28, not Mar 3)
+            final nextMonth = task.dueDate!.month + 1;
+            final nextYear =
+                task.dueDate!.year + (nextMonth > 12 ? 1 : 0);
+            final month = nextMonth > 12 ? nextMonth - 12 : nextMonth;
+            final lastDay = DateTime(nextYear, month + 1, 0).day;
+            final day =
+                task.dueDate!.day > lastDay ? lastDay : task.dueDate!.day;
+            nextDue = DateTime(nextYear, month, day);
         }
       }
 

@@ -287,8 +287,9 @@ class KanbanBoardState extends State<KanbanBoard> {
     return Selector<TaskService, List<BoardColumn>>(
       selector: (_, service) => service.selectedProject?.activeColumns ?? [],
       builder: (context, columns, _) {
-        // Build focus nodes for all visible tasks
+        // Build focus nodes for visible tasks and clean up stale ones
         final taskService = context.read<TaskService>();
+        final activeTaskIds = <String>{};
         for (final column in columns) {
           final tasks = taskService.getTasksForColumnPaginated(
             column.id,
@@ -297,8 +298,17 @@ class KanbanBoardState extends State<KanbanBoard> {
           );
           for (final task in tasks) {
             _getOrCreateFocusNode(task.id);
+            activeTaskIds.add(task.id);
           }
         }
+        // Dispose focus nodes for tasks no longer visible
+        _taskFocusNodes.keys
+            .where((id) => !activeTaskIds.contains(id))
+            .toList()
+            .forEach((id) {
+          _taskFocusNodes[id]!.dispose();
+          _taskFocusNodes.remove(id);
+        });
 
         return ReorderableListView.builder(
           scrollDirection: Axis.horizontal,
