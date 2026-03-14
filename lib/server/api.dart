@@ -289,6 +289,132 @@ Router buildApiRouter({
         headers: _json);
   });
 
+  router.post('/api/v1/projects', (Request request) async {
+    final body = await _parseBody(request);
+    if (body == null) return _badJson();
+
+    final name = body['name'] as String?;
+    if (name == null || name.trim().isEmpty) {
+      return Response(400,
+          body: jsonEncode({'error': 'name is required'}), headers: _json);
+    }
+
+    final projectKey = body['project_key'] as String?;
+    if (projectKey == null || projectKey.trim().isEmpty) {
+      return Response(400,
+          body: jsonEncode({'error': 'project_key is required'}),
+          headers: _json);
+    }
+
+    final normalizedKey = projectKey.toUpperCase().trim();
+    final keyRegex = RegExp(r'^[A-Z0-9]{2,5}$');
+    if (!keyRegex.hasMatch(normalizedKey)) {
+      return Response(400,
+          body: jsonEncode({
+            'error':
+                'project_key must be 2-5 uppercase alphanumeric characters'
+          }),
+          headers: _json);
+    }
+
+    final now = DateTime.now();
+    final id = _uuid.v4();
+
+    final project = Project(
+      id: id,
+      name: name,
+      projectKey: normalizedKey,
+      description: body['description'] as String?,
+      createdAt: now,
+      color: body['color'] as String? ?? '#4A90E2',
+      iconName: body['icon_name'] as String?,
+    );
+
+    await projects.put(id, project);
+
+    agnos?.forwardAuditEvent(
+      action: 'create',
+      entityType: 'project',
+      entityId: id,
+      payload: {'name': name, 'project_key': normalizedKey},
+    );
+
+    return Response(201,
+        body: jsonEncode(projectToJson(project)), headers: _json);
+  });
+
+  router.patch('/api/v1/projects/<id>',
+      (Request request, String id) async {
+    final project = projects.get(id);
+    if (project == null) {
+      return Response(404,
+          body: jsonEncode({'error': 'Project not found'}), headers: _json);
+    }
+
+    final body = await _parseBody(request);
+    if (body == null) return _badJson();
+
+    if (body.containsKey('name')) {
+      final name = body['name'] as String?;
+      if (name == null || name.trim().isEmpty) {
+        return Response(400,
+            body: jsonEncode({'error': 'name cannot be empty'}),
+            headers: _json);
+      }
+      project.name = name;
+    }
+    if (body.containsKey('description')) {
+      project.description = body['description'] as String?;
+    }
+    if (body.containsKey('color')) {
+      project.color = body['color'] as String? ?? project.color;
+    }
+    if (body.containsKey('icon_name')) {
+      project.iconName = body['icon_name'] as String?;
+    }
+    if (body.containsKey('is_archived')) {
+      project.isArchived = body['is_archived'] as bool? ?? false;
+    }
+
+    project.modifiedAt = DateTime.now();
+    await projects.put(id, project);
+
+    agnos?.forwardAuditEvent(
+      action: 'update',
+      entityType: 'project',
+      entityId: id,
+      payload: body,
+    );
+
+    return Response.ok(jsonEncode(projectToJson(project)), headers: _json);
+  });
+
+  router.delete('/api/v1/projects/<id>',
+      (Request request, String id) async {
+    final project = projects.get(id);
+    if (project == null) {
+      return Response(404,
+          body: jsonEncode({'error': 'Project not found'}), headers: _json);
+    }
+
+    // Delete all tasks belonging to this project
+    final projectTasks =
+        tasks.values.where((t) => t.projectId == id).toList();
+    for (final task in projectTasks) {
+      await tasks.delete(task.id);
+    }
+
+    await projects.delete(id);
+
+    agnos?.forwardAuditEvent(
+      action: 'delete',
+      entityType: 'project',
+      entityId: id,
+    );
+
+    return Response(204);
+  });
+
   // ── Rituals ──
 
   router.get('/api/v1/rituals', (Request request) async {
@@ -313,6 +439,126 @@ Router buildApiRouter({
     items.sort((a, b) => a.title.compareTo(b.title));
     return Response.ok(jsonEncode(items.map(ritualToJson).toList()),
         headers: _json);
+  });
+
+  router.post('/api/v1/rituals', (Request request) async {
+    final body = await _parseBody(request);
+    if (body == null) return _badJson();
+
+    final title = body['title'] as String?;
+    if (title == null || title.trim().isEmpty) {
+      return Response(400,
+          body: jsonEncode({'error': 'title is required'}), headers: _json);
+    }
+
+    final id = _uuid.v4();
+    final frequencyStr = body['frequency'] as String? ?? 'daily';
+    final frequency = RitualFrequency.values.firstWhere(
+      (f) => f.name == frequencyStr,
+      orElse: () => RitualFrequency.daily,
+    );
+
+    final ritual = Ritual(
+      id: id,
+      title: title,
+      description: body['description'] as String?,
+      createdAt: DateTime.now(),
+      frequency: frequency,
+    );
+
+    await rituals.put(id, ritual);
+
+    agnos?.forwardAuditEvent(
+      action: 'create',
+      entityType: 'ritual',
+      entityId: id,
+      payload: {'title': title},
+    );
+
+    return Response(201,
+        body: jsonEncode(ritualToJson(ritual)), headers: _json);
+  });
+
+  router.patch('/api/v1/rituals/<id>',
+      (Request request, String id) async {
+    final ritual = rituals.get(id);
+    if (ritual == null) {
+      return Response(404,
+          body: jsonEncode({'error': 'Ritual not found'}), headers: _json);
+    }
+
+    final body = await _parseBody(request);
+    if (body == null) return _badJson();
+
+    if (body.containsKey('title')) {
+      final title = body['title'] as String?;
+      if (title == null || title.trim().isEmpty) {
+        return Response(400,
+            body: jsonEncode({'error': 'title cannot be empty'}),
+            headers: _json);
+      }
+      ritual.title = title;
+    }
+    if (body.containsKey('description')) {
+      ritual.description = body['description'] as String?;
+    }
+    if (body.containsKey('frequency')) {
+      final f =
+          RitualFrequency.values.where((v) => v.name == body['frequency']);
+      if (f.isNotEmpty) ritual.frequency = f.first;
+    }
+
+    await rituals.put(id, ritual);
+
+    agnos?.forwardAuditEvent(
+      action: 'update',
+      entityType: 'ritual',
+      entityId: id,
+      payload: body,
+    );
+
+    return Response.ok(jsonEncode(ritualToJson(ritual)), headers: _json);
+  });
+
+  router.delete('/api/v1/rituals/<id>',
+      (Request request, String id) async {
+    final ritual = rituals.get(id);
+    if (ritual == null) {
+      return Response(404,
+          body: jsonEncode({'error': 'Ritual not found'}), headers: _json);
+    }
+
+    await rituals.delete(id);
+
+    agnos?.forwardAuditEvent(
+      action: 'delete',
+      entityType: 'ritual',
+      entityId: id,
+    );
+
+    return Response(204);
+  });
+
+  router.post('/api/v1/rituals/<id>/complete',
+      (Request request, String id) async {
+    final ritual = rituals.get(id);
+    if (ritual == null) {
+      return Response(404,
+          body: jsonEncode({'error': 'Ritual not found'}), headers: _json);
+    }
+
+    ritual.isCompleted = true;
+    ritual.lastCompleted = DateTime.now();
+    ritual.streakCount++;
+    await rituals.put(id, ritual);
+
+    agnos?.forwardAuditEvent(
+      action: 'complete',
+      entityType: 'ritual',
+      entityId: id,
+    );
+
+    return Response.ok(jsonEncode(ritualToJson(ritual)), headers: _json);
   });
 
   // ── Analytics ──

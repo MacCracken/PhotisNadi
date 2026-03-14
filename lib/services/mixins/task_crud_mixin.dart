@@ -93,6 +93,22 @@ mixin TaskCrudMixin on ChangeNotifier {
     }
   }
 
+  Future<bool> restoreTask(Task task) async {
+    try {
+      await taskRepo.put(task);
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to restore task: ${task.id}',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
   // ── Task Dependencies ──
 
   Future<bool> addTaskDependency(String taskId, String dependsOnTaskId) async {
@@ -108,7 +124,9 @@ mixin TaskCrudMixin on ChangeNotifier {
       await task.save();
       notifyListeners();
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      developer.log('Failed to add dependency: $taskId -> $dependsOnTaskId',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }
@@ -124,7 +142,10 @@ mixin TaskCrudMixin on ChangeNotifier {
       await task.save();
       notifyListeners();
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      developer.log(
+          'Failed to remove dependency: $taskId -> $dependsOnTaskId',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
   }

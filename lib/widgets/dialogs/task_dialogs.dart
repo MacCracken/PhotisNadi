@@ -143,7 +143,10 @@ void showAddTaskDialog(BuildContext context, {String? columnId}) {
         );
       },
     ),
-  );
+  ).then((_) {
+    titleController.dispose();
+    descController.dispose();
+  });
 }
 
 /// Shows a dialog with task details
@@ -233,7 +236,7 @@ void showTaskDetails(BuildContext context, Task task) {
                       controlAffinity: ListTileControlAffinity.leading,
                       onChanged: (_) async {
                         await taskService.toggleSubtask(task.id, i);
-                        setDialogState(() {});
+                        if (context.mounted) setDialogState(() {});
                       },
                     );
                   }),
@@ -443,7 +446,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
                         onDeleted: () async {
                           await taskService.removeTaskDependency(
                               task.id, dep.id);
-                          setDialogState(() {});
+                          if (context.mounted) setDialogState(() {});
                         },
                       );
                     }).toList(),
@@ -480,7 +483,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
                           ),
                         );
                       }
-                      setDialogState(() {});
+                      if (context.mounted) setDialogState(() {});
                     }
                   },
                 ),
@@ -543,7 +546,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
                         icon: const Icon(Icons.close, size: 16),
                         onPressed: () async {
                           await taskService.removeSubtask(task.id, i);
-                          setDialogState(() {});
+                          if (context.mounted) setDialogState(() {});
                         },
                       ),
                     ],
@@ -562,7 +565,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
                           if (value.trim().isNotEmpty) {
                             await taskService.addSubtask(task.id, value.trim());
                             subtaskController.clear();
-                            setDialogState(() {});
+                            if (context.mounted) setDialogState(() {});
                           }
                         },
                       ),
@@ -574,7 +577,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
                           await taskService.addSubtask(
                               task.id, subtaskController.text.trim());
                           subtaskController.clear();
-                          setDialogState(() {});
+                          if (context.mounted) setDialogState(() {});
                         }
                       },
                     ),
@@ -651,7 +654,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
                             task.id,
                             result.files.single.path!,
                           );
-                          setDialogState(() {});
+                          if (context.mounted) setDialogState(() {});
                         }
                       },
                     ),
@@ -673,7 +676,7 @@ void showEditTaskDialog(BuildContext context, Task task) {
                         icon: const Icon(Icons.close, size: 16),
                         onPressed: () async {
                           await taskService.removeAttachment(task.id, i);
-                          setDialogState(() {});
+                          if (context.mounted) setDialogState(() {});
                         },
                       ),
                       onTap: () {
@@ -720,7 +723,13 @@ void showEditTaskDialog(BuildContext context, Task task) {
         );
       },
     ),
-  );
+  ).then((_) {
+    titleController.dispose();
+    descController.dispose();
+    subtaskController.dispose();
+    estimateController.dispose();
+    logTimeController.dispose();
+  });
 }
 
 /// Shows a task menu with edit, move, and delete options
@@ -750,8 +759,19 @@ void showTaskMenu(BuildContext context, Task task) {
           leading: const Icon(Icons.delete, color: Colors.red),
           title: const Text('Delete', style: TextStyle(color: Colors.red)),
           onTap: () {
+            final messenger = ScaffoldMessenger.of(context);
+            final taskService = context.read<TaskService>();
             Navigator.pop(context);
-            context.read<TaskService>().deleteTask(task.id);
+            taskService.deleteTask(task.id);
+            messenger.showSnackBar(
+              SnackBar(
+                content: const Text('Task deleted'),
+                action: SnackBarAction(
+                  label: 'Undo',
+                  onPressed: () => taskService.restoreTask(task),
+                ),
+              ),
+            );
           },
         ),
       ],

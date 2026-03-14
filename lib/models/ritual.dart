@@ -83,8 +83,14 @@ class Ritual extends HiveObject {
         break;
     }
 
-    if (shouldReset && isCompleted) {
-      isCompleted = false;
+    if (shouldReset) {
+      if (isCompleted) {
+        // User completed during the period — reset for next period, keep streak
+        isCompleted = false;
+      } else {
+        // User did NOT complete during the period — streak is broken
+        streakCount = 0;
+      }
       resetTime = now;
       await save();
     }

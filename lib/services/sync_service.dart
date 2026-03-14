@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import '../models/task.dart';
 import '../models/ritual.dart';
 import '../models/project.dart';
+import '../models/board.dart';
 import '../models/tag.dart';
 
 // Extension methods for model parsing
@@ -68,6 +69,37 @@ extension TaskParsing on Task {
 
 extension ProjectParsing on Project {
   static Project fromMap(Map<String, dynamic> data) {
+    List<Board>? boards;
+    final boardsList = data['boards'] as List?;
+    if (boardsList != null) {
+      boards = boardsList.map((b) {
+        final bMap = b as Map<String, dynamic>;
+        final columns = (bMap['columns'] as List?)?.map((c) {
+          final cMap = c as Map<String, dynamic>;
+          return BoardColumn(
+            id: cMap['id'] as String,
+            title: cMap['title'] as String,
+            taskIds: List<String>.from(cMap['task_ids'] ?? []),
+            order: cMap['order'] as int? ?? 0,
+            color: cMap['color'] as String? ?? '#6B7280',
+            status: TaskStatus.values.firstWhere(
+              (s) => s.name == cMap['status'],
+              orElse: () => TaskStatus.todo,
+            ),
+          );
+        }).toList();
+        return Board(
+          id: bMap['id'] as String,
+          title: bMap['title'] as String,
+          description: bMap['description'] as String?,
+          createdAt: DateTime.parse(bMap['created_at'] as String),
+          columnIds: List<String>.from(bMap['column_ids'] ?? []),
+          color: bMap['color'] as String? ?? '#4A90E2',
+          columns: columns ?? [],
+        );
+      }).toList();
+    }
+
     return Project(
       id: data['id'] as String,
       name: data['name'] as String,
@@ -83,6 +115,8 @@ extension ProjectParsing on Project {
           : DateTime.parse(data['created_at'] as String),
       sharedWith: List<String>.from(data['shared_with'] ?? []),
       ownerId: data['owner_id'] as String?,
+      boards: boards,
+      activeBoardId: data['active_board_id'] as String?,
     );
   }
 
@@ -101,6 +135,23 @@ extension ProjectParsing on Project {
       'modified_at': modifiedAt.toIso8601String(),
       'shared_with': sharedWith,
       'owner_id': ownerId,
+      'boards': boards.map((b) => {
+        'id': b.id,
+        'title': b.title,
+        'description': b.description,
+        'created_at': b.createdAt.toIso8601String(),
+        'column_ids': b.columnIds,
+        'color': b.color,
+        'columns': b.columns.map((c) => {
+          'id': c.id,
+          'title': c.title,
+          'task_ids': c.taskIds,
+          'order': c.order,
+          'color': c.color,
+          'status': c.status.name,
+        }).toList(),
+      }).toList(),
+      'active_board_id': activeBoardId,
     };
   }
 }
@@ -233,6 +284,12 @@ class SyncService extends ChangeNotifier {
   String? _syncError;
   DateTime? _lastSyncedAt;
   bool _isSyncEnabled = false;
+
+  // Per-entity sync locks to prevent concurrent operations on the same table
+  bool _tasksSyncing = false;
+  bool _projectsSyncing = false;
+  bool _ritualsSyncing = false;
+  bool _tagsSyncing = false;
 
   // Conflict tracking
   final List<SyncConflict> _pendingConflicts = [];
@@ -441,7 +498,8 @@ class SyncService extends ChangeNotifier {
 
   // Task synchronization
   Future<bool> syncTasks() async {
-    if (!_isInitialized) return false;
+    if (!_isInitialized || _tasksSyncing) return false;
+    _tasksSyncing = true;
 
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -499,6 +557,8 @@ class SyncService extends ChangeNotifier {
         stackTrace: stackTrace,
       );
       return false;
+    } finally {
+      _tasksSyncing = false;
     }
   }
 
@@ -524,26 +584,52 @@ class SyncService extends ChangeNotifier {
       }
     }
 
-    // Resolve conflicts using modifiedAt (last-write-wins)
+    // Resolve conflicts for tasks that exist in both local and remote
     for (final task in localTasks) {
       if (remoteMap.containsKey(task.id)) {
         final remoteTask = remoteMap[task.id]!;
-        final diff = remoteTask.modifiedAt.difference(task.modifiedAt).abs();
 
-        // If both modified within 5 seconds, flag as conflict
-        if (diff.inSeconds < 5 && remoteTask.modifiedAt != task.modifiedAt) {
-          _pendingConflicts.add(SyncConflict(
-            entityType: 'task',
-            entityId: task.id,
-            entityTitle: task.title,
-            localModifiedAt: task.modifiedAt,
-            remoteModifiedAt: remoteTask.modifiedAt,
-            localData: task.toSyncMap(userId),
-            remoteData: remoteTask.toSyncMap(userId),
-          ));
-        } else if (remoteTask.modifiedAt.isAfter(task.modifiedAt)) {
+        // Identical timestamps — already in sync
+        if (remoteTask.modifiedAt == task.modifiedAt) continue;
+
+        // Check if both sides were modified since last sync (true conflict),
+        // or if only one side changed (safe auto-merge)
+        final bothModified = _lastSyncedAt != null &&
+            task.modifiedAt.isAfter(_lastSyncedAt!) &&
+            remoteTask.modifiedAt.isAfter(_lastSyncedAt!);
+
+        if (bothModified) {
+          // Both sides changed since last sync — compare actual content
+          final localData = task.toSyncMap(userId);
+          final remoteData = remoteTask.toSyncMap(userId);
+          final contentDiffers = _mapsHaveDifferences(localData, remoteData,
+              ignoreKeys: {'modified_at', 'user_id'});
+
+          if (contentDiffers) {
+            // Real conflict: different fields changed on both sides
+            _pendingConflicts.add(SyncConflict(
+              entityType: 'task',
+              entityId: task.id,
+              entityTitle: task.title,
+              localModifiedAt: task.modifiedAt,
+              remoteModifiedAt: remoteTask.modifiedAt,
+              localData: localData,
+              remoteData: remoteData,
+            ));
+            developer.log(
+              'Task conflict detected: ${task.id} '
+              '(local: ${task.modifiedAt}, remote: ${remoteTask.modifiedAt})',
+              name: 'SyncService',
+            );
+            continue;
+          }
+          // Content is identical despite different timestamps — no conflict
+        }
+
+        // One-sided change: safe auto-merge with last-write-wins
+        if (remoteTask.modifiedAt.isAfter(task.modifiedAt)) {
           await _taskBox.put(task.id, remoteTask);
-        } else if (task.modifiedAt.isAfter(remoteTask.modifiedAt)) {
+        } else {
           await _uploadTask(task, userId);
         }
       }
@@ -573,7 +659,8 @@ class SyncService extends ChangeNotifier {
 
   // Project synchronization
   Future<bool> syncProjects() async {
-    if (!_isInitialized) return false;
+    if (!_isInitialized || _projectsSyncing) return false;
+    _projectsSyncing = true;
 
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -631,6 +718,8 @@ class SyncService extends ChangeNotifier {
         stackTrace: stackTrace,
       );
       return false;
+    } finally {
+      _projectsSyncing = false;
     }
   }
 
@@ -656,27 +745,45 @@ class SyncService extends ChangeNotifier {
       }
     }
 
-    // Resolve conflicts using modifiedAt (last-write-wins)
+    // Resolve conflicts for projects that exist in both
     for (final project in localProjects) {
       if (remoteMap.containsKey(project.id)) {
         final remoteProject = remoteMap[project.id]!;
-        final diff =
-            remoteProject.modifiedAt.difference(project.modifiedAt).abs();
 
-        if (diff.inSeconds < 5 &&
-            remoteProject.modifiedAt != project.modifiedAt) {
-          _pendingConflicts.add(SyncConflict(
-            entityType: 'project',
-            entityId: project.id,
-            entityTitle: project.name,
-            localModifiedAt: project.modifiedAt,
-            remoteModifiedAt: remoteProject.modifiedAt,
-            localData: project.toSyncMap(userId),
-            remoteData: remoteProject.toSyncMap(userId),
-          ));
-        } else if (remoteProject.modifiedAt.isAfter(project.modifiedAt)) {
+        if (remoteProject.modifiedAt == project.modifiedAt) continue;
+
+        final bothModified = _lastSyncedAt != null &&
+            project.modifiedAt.isAfter(_lastSyncedAt!) &&
+            remoteProject.modifiedAt.isAfter(_lastSyncedAt!);
+
+        if (bothModified) {
+          final localData = project.toSyncMap(userId);
+          final remoteData = remoteProject.toSyncMap(userId);
+          final contentDiffers = _mapsHaveDifferences(localData, remoteData,
+              ignoreKeys: {'modified_at', 'user_id'});
+
+          if (contentDiffers) {
+            _pendingConflicts.add(SyncConflict(
+              entityType: 'project',
+              entityId: project.id,
+              entityTitle: project.name,
+              localModifiedAt: project.modifiedAt,
+              remoteModifiedAt: remoteProject.modifiedAt,
+              localData: localData,
+              remoteData: remoteData,
+            ));
+            developer.log(
+              'Project conflict detected: ${project.id} '
+              '(local: ${project.modifiedAt}, remote: ${remoteProject.modifiedAt})',
+              name: 'SyncService',
+            );
+            continue;
+          }
+        }
+
+        if (remoteProject.modifiedAt.isAfter(project.modifiedAt)) {
           await _projectBox.put(project.id, remoteProject);
-        } else if (project.modifiedAt.isAfter(remoteProject.modifiedAt)) {
+        } else {
           await _uploadProject(project, userId);
         }
       }
@@ -706,7 +813,8 @@ class SyncService extends ChangeNotifier {
 
   // Ritual synchronization
   Future<bool> syncRituals() async {
-    if (!_isInitialized) return false;
+    if (!_isInitialized || _ritualsSyncing) return false;
+    _ritualsSyncing = true;
 
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -764,6 +872,8 @@ class SyncService extends ChangeNotifier {
         stackTrace: stackTrace,
       );
       return false;
+    } finally {
+      _ritualsSyncing = false;
     }
   }
 
@@ -863,7 +973,8 @@ class SyncService extends ChangeNotifier {
 
   // Tag synchronization
   Future<bool> syncTags() async {
-    if (!_isInitialized) return false;
+    if (!_isInitialized || _tagsSyncing) return false;
+    _tagsSyncing = true;
 
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -915,6 +1026,8 @@ class SyncService extends ChangeNotifier {
         stackTrace: stackTrace,
       );
       return false;
+    } finally {
+      _tagsSyncing = false;
     }
   }
 
@@ -926,15 +1039,40 @@ class SyncService extends ChangeNotifier {
     final localMap = {for (var t in localTags) t.id: t};
     final remoteMap = {for (var t in remoteTags) t.id: t};
 
+    // Upload local-only tags
     for (final tag in localTags) {
       if (!remoteMap.containsKey(tag.id)) {
         await _uploadTag(tag, userId);
       }
     }
 
+    // Download remote-only tags
     for (final tag in remoteTags) {
       if (!localMap.containsKey(tag.id)) {
         await _tagBox.put(tag.id, tag);
+      }
+    }
+
+    // Resolve conflicts for tags that exist in both
+    for (final tag in localTags) {
+      if (remoteMap.containsKey(tag.id)) {
+        final remoteTag = remoteMap[tag.id]!;
+        final differs = tag.name != remoteTag.name ||
+            tag.color != remoteTag.color ||
+            tag.projectId != remoteTag.projectId;
+
+        if (differs) {
+          // Tags lack modifiedAt — flag as conflict for user resolution
+          _pendingConflicts.add(SyncConflict(
+            entityType: 'tag',
+            entityId: tag.id,
+            entityTitle: tag.name,
+            localModifiedAt: DateTime.now(), // Tags lack timestamps
+            remoteModifiedAt: DateTime.now(),
+            localData: tag.toSyncMap(userId),
+            remoteData: remoteTag.toSyncMap(userId),
+          ));
+        }
       }
     }
   }
@@ -980,6 +1118,9 @@ class SyncService extends ChangeNotifier {
         case 'ritual':
           final ritual = _ritualBox.get(conflict.entityId);
           if (ritual != null) await _uploadRitual(ritual, userId);
+        case 'tag':
+          final tag = _tagBox.get(conflict.entityId);
+          if (tag != null) await _uploadTag(tag, userId);
       }
     } else {
       // Apply remote version locally
@@ -993,6 +1134,9 @@ class SyncService extends ChangeNotifier {
         case 'ritual':
           final ritual = RitualParsing.fromMap(conflict.remoteData);
           await _ritualBox.put(ritual.id, ritual);
+        case 'tag':
+          final tag = TagParsing.fromMap(conflict.remoteData);
+          await _tagBox.put(tag.id, tag);
       }
     }
 
@@ -1007,6 +1151,19 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  /// Compare two sync maps for meaningful differences, ignoring specified keys.
+  bool _mapsHaveDifferences(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b, {
+    Set<String> ignoreKeys = const {},
+  }) {
+    final allKeys = {...a.keys, ...b.keys}..removeAll(ignoreKeys);
+    for (final key in allKeys) {
+      if ('${a[key]}' != '${b[key]}') return true;
+    }
+    return false;
+  }
+
   // Real-time subscriptions
   void setupRealtimeSync() {
     if (!_isInitialized) return;
@@ -1016,6 +1173,15 @@ class SyncService extends ChangeNotifier {
 
     // Clean up existing channels first
     _cleanupChannels();
+
+    // Debounce real-time callbacks to avoid rapid-fire syncs.
+    // The per-entity locks (_tasksSyncing etc.) also guard against overlap,
+    // but debouncing reduces unnecessary attempts.
+    Timer? taskDebounce;
+    Timer? projectDebounce;
+    Timer? ritualDebounce;
+    Timer? tagDebounce;
+    const debounceDelay = Duration(seconds: 2);
 
     final tasksChannel = _supabase.channel('photisnadi_sync')
       ..onPostgresChanges(
@@ -1028,7 +1194,8 @@ class SyncService extends ChangeNotifier {
           value: userId,
         ),
         callback: (payload) {
-          syncTasks();
+          taskDebounce?.cancel();
+          taskDebounce = Timer(debounceDelay, syncTasks);
         },
       ).subscribe();
     _channels.add(tasksChannel);
@@ -1044,7 +1211,8 @@ class SyncService extends ChangeNotifier {
           value: userId,
         ),
         callback: (payload) {
-          syncProjects();
+          projectDebounce?.cancel();
+          projectDebounce = Timer(debounceDelay, syncProjects);
         },
       ).subscribe();
     _channels.add(projectsChannel);
@@ -1060,7 +1228,8 @@ class SyncService extends ChangeNotifier {
           value: userId,
         ),
         callback: (payload) {
-          syncRituals();
+          ritualDebounce?.cancel();
+          ritualDebounce = Timer(debounceDelay, syncRituals);
         },
       ).subscribe();
     _channels.add(ritualsChannel);
@@ -1076,7 +1245,8 @@ class SyncService extends ChangeNotifier {
           value: userId,
         ),
         callback: (payload) {
-          syncTags();
+          tagDebounce?.cancel();
+          tagDebounce = Timer(debounceDelay, syncTags);
         },
       ).subscribe();
     _channels.add(tagsChannel);

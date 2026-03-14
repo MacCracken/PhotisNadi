@@ -85,6 +85,22 @@ mixin RitualMixin on ChangeNotifier {
     }
   }
 
+  Future<bool> restoreRitual(Ritual ritual) async {
+    try {
+      await ritualRepo.put(ritual);
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to restore ritual: ${ritual.id}',
+        name: 'TaskService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
   Future<bool> deleteRitual(String ritualId) async {
     try {
       await ritualRepo.delete(ritualId);

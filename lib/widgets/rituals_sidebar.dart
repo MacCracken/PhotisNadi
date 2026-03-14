@@ -238,6 +238,16 @@ class _RitualsSidebarState extends State<RitualsSidebar> {
                     break;
                   case 'delete':
                     taskService.deleteRitual(ritual.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Ritual deleted'),
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () =>
+                              taskService.restoreRitual(ritual),
+                        ),
+                      ),
+                    );
                     break;
                 }
               },

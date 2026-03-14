@@ -121,7 +121,7 @@ mixin FilterSortMixin on ChangeNotifier {
 
     if (_filterTags.isNotEmpty) {
       filtered = filtered
-          .where((task) => _filterTags.every((tag) => task.tags.contains(tag)))
+          .where((task) => _filterTags.any((tag) => task.tags.contains(tag)))
           .toList();
     }
 

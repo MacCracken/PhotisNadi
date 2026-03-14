@@ -50,7 +50,10 @@ void showAddRitualDialog(BuildContext context) {
         ),
       ],
     ),
-  );
+  ).then((_) {
+    titleController.dispose();
+    descController.dispose();
+  });
 }
 
 /// Shows a dialog to edit an existing ritual
@@ -101,5 +104,8 @@ void showEditRitualDialog(BuildContext context, Ritual ritual) {
         ),
       ],
     ),
-  );
+  ).then((_) {
+    titleController.dispose();
+    descController.dispose();
+  });
 }

@@ -23,8 +23,22 @@ class TagRepository extends HiveRepository<Tag> {
     }
   }
 
+  /// Find which project index currently holds this tag ID.
+  String? _findCurrentProjectId(String tagId) {
+    for (final entry in _projectIndex.entries) {
+      if (entry.value.contains(tagId)) return entry.key;
+    }
+    return null;
+  }
+
   @override
   Future<Tag> put(Tag entity) async {
+    // Remove from old project index before storing (handles project changes)
+    final oldPid = _findCurrentProjectId(entity.id);
+    if (oldPid != null) {
+      _projectIndex[oldPid]?.remove(entity.id);
+    }
+
     final result = await super.put(entity);
     _projectIndex.putIfAbsent(entity.projectId, () => {}).add(entity.id);
     return result;

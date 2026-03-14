@@ -41,13 +41,21 @@ class TaskRepository extends HiveRepository<Task> {
       _projectIndex[oldPid]?.remove(entity.id);
     }
 
-    final result = await super.put(entity);
+    try {
+      final result = await super.put(entity);
 
-    // Add to new project index
-    final pid = entity.projectId ?? '';
-    _projectIndex.putIfAbsent(pid, () => {}).add(entity.id);
+      // Add to new project index
+      final pid = entity.projectId ?? '';
+      _projectIndex.putIfAbsent(pid, () => {}).add(entity.id);
 
-    return result;
+      return result;
+    } catch (e) {
+      // Restore old index entry on failure to keep index consistent
+      if (oldPid != null) {
+        _projectIndex.putIfAbsent(oldPid, () => {}).add(entity.id);
+      }
+      rethrow;
+    }
   }
 
   @override
