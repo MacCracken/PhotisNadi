@@ -68,6 +68,13 @@ class TaskService extends ChangeNotifier
         _ritualRepo = ritualRepo ?? RitualRepository(),
         _tagRepo = tagRepo ?? TagRepository();
 
+  @override
+  void dispose() {
+    _notifyTimer?.cancel();
+    _notifyTimer = null;
+    super.dispose();
+  }
+
   // Expose repositories to mixins
   @override
   TaskRepository get taskRepo => _taskRepo;

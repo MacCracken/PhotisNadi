@@ -26,11 +26,10 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final priorityColor = getPriorityColor(task.priority);
-    final taskService = context.watch<TaskService>();
-    final themeService = context.watch<ThemeService>();
+    final taskService = context.read<TaskService>();
     final isBlocked = taskService.isTaskBlocked(task);
     final hasDependencies = task.dependsOn.isNotEmpty;
-    final compact = themeService.isCompact;
+    final compact = context.select<ThemeService, bool>((s) => s.isCompact);
 
     final marginH = compact
         ? AppConstants.cardMarginHorizontalCompact

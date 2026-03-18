@@ -87,16 +87,15 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
       widget.column.id,
       projectId: widget.project.id,
     );
+    // Load all pages from 0 through _currentPage for infinite scroll
+    const pageSize = AppConstants.defaultPageSize;
     final tasks = taskService.getTasksForColumnPaginated(
       widget.column.id,
       projectId: widget.project.id,
-      page: _currentPage,
+      page: 0,
+      pageSize: (_currentPage + 1) * pageSize,
     );
-    final hasMore = taskService.hasMoreTasksForColumn(
-      widget.column.id,
-      projectId: widget.project.id,
-      page: _currentPage,
-    );
+    final hasMore = tasks.length < totalCount;
 
     return Semantics(
       label: '${widget.column.title} column, $totalCount tasks',
@@ -278,6 +277,7 @@ class KanbanBoard extends StatefulWidget {
 
 class KanbanBoardState extends State<KanbanBoard> {
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _boardFocusNode = FocusNode();
   final Map<String, FocusNode> _taskFocusNodes = {};
   int _focusedColumnIndex = 0;
   int _focusedTaskIndex = 0;
@@ -287,6 +287,7 @@ class KanbanBoardState extends State<KanbanBoard> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _boardFocusNode.dispose();
     for (final node in _taskFocusNodes.values) {
       node.dispose();
     }
@@ -502,14 +503,16 @@ class KanbanBoardState extends State<KanbanBoard> {
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: FocusNode(),
-      onKeyEvent: (event) {
+    return Focus(
+      focusNode: _boardFocusNode,
+      onKeyEvent: (node, event) {
         if (event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.escape &&
             _isMultiSelectMode) {
           _exitMultiSelect();
+          return KeyEventResult.handled;
         }
+        return KeyEventResult.ignored;
       },
       child: Column(
         children: [

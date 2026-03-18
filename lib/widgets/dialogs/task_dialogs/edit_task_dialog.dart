@@ -346,14 +346,25 @@ void showEditTaskDialog(BuildContext context, Task task) {
                       icon: const Icon(Icons.attach_file, size: 16),
                       label: const Text('Add'),
                       onPressed: () async {
-                        final result = await FilePicker.platform.pickFiles();
-                        if (result != null &&
-                            result.files.single.path != null) {
-                          await taskService.addAttachment(
-                            task.id,
-                            result.files.single.path!,
-                          );
-                          if (context.mounted) setDialogState(() {});
+                        try {
+                          final result = await FilePicker.platform.pickFiles();
+                          if (result != null &&
+                              result.files.single.path != null) {
+                            await taskService.addAttachment(
+                              task.id,
+                              result.files.single.path!,
+                            );
+                            if (context.mounted) setDialogState(() {});
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to pick file: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         }
                       },
                     ),

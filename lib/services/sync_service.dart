@@ -280,6 +280,10 @@ class SyncService extends ChangeNotifier {
   late final SupabaseClient _supabase;
   bool _isInitialized = false;
   final List<RealtimeChannel> _channels = [];
+  Timer? _taskDebounce;
+  Timer? _projectDebounce;
+  Timer? _ritualDebounce;
+  Timer? _tagDebounce;
   Timer? _periodicSyncTimer;
   StreamSubscription<AuthState>? _authSubscription;
 
@@ -1183,10 +1187,6 @@ class SyncService extends ChangeNotifier {
     // Debounce real-time callbacks to avoid rapid-fire syncs.
     // The per-entity locks (_tasksSyncing etc.) also guard against overlap,
     // but debouncing reduces unnecessary attempts.
-    Timer? taskDebounce;
-    Timer? projectDebounce;
-    Timer? ritualDebounce;
-    Timer? tagDebounce;
     const debounceDelay = Duration(seconds: 2);
 
     final tasksChannel = _supabase.channel('photisnadi_sync')
@@ -1200,8 +1200,8 @@ class SyncService extends ChangeNotifier {
           value: userId,
         ),
         callback: (payload) {
-          taskDebounce?.cancel();
-          taskDebounce = Timer(debounceDelay, syncTasks);
+          _taskDebounce?.cancel();
+          _taskDebounce = Timer(debounceDelay, syncTasks);
         },
       ).subscribe();
     _channels.add(tasksChannel);
@@ -1217,8 +1217,8 @@ class SyncService extends ChangeNotifier {
           value: userId,
         ),
         callback: (payload) {
-          projectDebounce?.cancel();
-          projectDebounce = Timer(debounceDelay, syncProjects);
+          _projectDebounce?.cancel();
+          _projectDebounce = Timer(debounceDelay, syncProjects);
         },
       ).subscribe();
     _channels.add(projectsChannel);
@@ -1234,8 +1234,8 @@ class SyncService extends ChangeNotifier {
           value: userId,
         ),
         callback: (payload) {
-          ritualDebounce?.cancel();
-          ritualDebounce = Timer(debounceDelay, syncRituals);
+          _ritualDebounce?.cancel();
+          _ritualDebounce = Timer(debounceDelay, syncRituals);
         },
       ).subscribe();
     _channels.add(ritualsChannel);
@@ -1251,14 +1251,18 @@ class SyncService extends ChangeNotifier {
           value: userId,
         ),
         callback: (payload) {
-          tagDebounce?.cancel();
-          tagDebounce = Timer(debounceDelay, syncTags);
+          _tagDebounce?.cancel();
+          _tagDebounce = Timer(debounceDelay, syncTags);
         },
       ).subscribe();
     _channels.add(tagsChannel);
   }
 
   void _cleanupChannels() {
+    _taskDebounce?.cancel();
+    _projectDebounce?.cancel();
+    _ritualDebounce?.cancel();
+    _tagDebounce?.cancel();
     for (final channel in _channels) {
       channel.unsubscribe();
     }
