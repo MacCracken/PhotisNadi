@@ -35,6 +35,10 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       version_slug: ${{ steps.version.outputs.version_slug }}
     steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: VERSION
+        sparse-checkout-cone-mode: false
     - name: Determine version
       id: version
       env:
@@ -42,8 +46,10 @@ jobs:
       run: |
         if [ -n "${INPUT_VERSION}" ]; then
           VERSION="${INPUT_VERSION}"
-        else
+        elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
           VERSION="${GITHUB_REF_NAME#v}"
+        else
+          VERSION="$(tr -d '[:space:]' < VERSION)"
         fi
         # Validate version format (YYYY.M.D or YYYY.M.D-P)
         if ! echo "${VERSION}" | grep -qE '^[0-9]{4}\.[0-9]+\.[0-9]+(\-[0-9]+)?$'; then
