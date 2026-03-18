@@ -27,11 +27,17 @@ String formatPriority(TaskPriority priority) {
   return name[0].toUpperCase() + name.substring(1);
 }
 
-/// Formats a TaskStatus to a display string
+/// Formats a TaskStatus to a display string.
+/// Converts camelCase enum names to title case: inProgress -> In Progress.
 String formatStatus(TaskStatus status) {
-  final name = status.name.replaceAll('_', ' ');
+  final name = status.name;
   if (name.isEmpty) return name;
-  return name[0].toUpperCase() + name.substring(1);
+  // Insert space before uppercase letters, then capitalize first letter
+  final spaced = name.replaceAllMapped(
+    RegExp('([A-Z])'),
+    (m) => ' ${m.group(1)}',
+  );
+  return spaced[0].toUpperCase() + spaced.substring(1);
 }
 
 /// Gets the color for a task priority

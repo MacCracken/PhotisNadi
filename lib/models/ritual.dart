@@ -96,10 +96,14 @@ class Ritual extends HiveObject {
     }
   }
 
+  /// ISO 8601 week number. Uses Thursday-based calculation:
+  /// the week containing the year's first Thursday is week 1.
   static int weekNumber(DateTime date) {
-    final jan1 = DateTime(date.year, 1, 1);
-    final dayOfYear = date.difference(jan1).inDays + 1;
-    return ((dayOfYear - date.weekday + 10) / 7).floor();
+    // Find the Thursday of this date's week
+    final thursday = date.add(Duration(days: DateTime.thursday - date.weekday));
+    final jan1 = DateTime(thursday.year, 1, 1);
+    final dayOfYear = thursday.difference(jan1).inDays + 1;
+    return ((dayOfYear - 1) / 7).floor() + 1;
   }
 
   Ritual copyWith({

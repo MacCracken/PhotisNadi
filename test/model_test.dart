@@ -564,7 +564,9 @@ void main() {
 
     test('formatStatus formats all statuses', () {
       expect(formatStatus(TaskStatus.todo), 'Todo');
-      expect(formatStatus(TaskStatus.inProgress), 'InProgress');
+      expect(formatStatus(TaskStatus.inProgress), 'In Progress');
+      expect(formatStatus(TaskStatus.inReview), 'In Review');
+      expect(formatStatus(TaskStatus.blocked), 'Blocked');
       expect(formatStatus(TaskStatus.done), 'Done');
     });
 

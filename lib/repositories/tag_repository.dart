@@ -39,9 +39,17 @@ class TagRepository extends HiveRepository<Tag> {
       _projectIndex[oldPid]?.remove(entity.id);
     }
 
-    final result = await super.put(entity);
-    _projectIndex.putIfAbsent(entity.projectId, () => {}).add(entity.id);
-    return result;
+    try {
+      final result = await super.put(entity);
+      _projectIndex.putIfAbsent(entity.projectId, () => {}).add(entity.id);
+      return result;
+    } catch (e) {
+      // Restore old index entry on failure to keep index consistent
+      if (oldPid != null) {
+        _projectIndex.putIfAbsent(oldPid, () => {}).add(entity.id);
+      }
+      rethrow;
+    }
   }
 
   @override

@@ -146,7 +146,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
         ),
         ...TaskStatus.values.map((status) => DropdownMenuItem(
               value: status,
-              child: Text(_statusLabel(status)),
+              child: Text(formatStatus(status)),
             )),
       ],
       onChanged: (value) => taskService.setFilterStatus(value),
@@ -172,12 +172,12 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: _getPriorityColor(priority),
+                      color: getPriorityColor(priority),
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(_priorityLabel(priority)),
+                  Text(formatPriority(priority)),
                 ],
               ),
             )),
@@ -271,7 +271,13 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               _isSameDay(taskService.filterDueAfter!, DateTime.now()) &&
               taskService.filterDueBefore != null &&
               _isSameDay(taskService.filterDueBefore!, DateTime.now()),
-          () => taskService.setFilterDueAfter(DateTime.now()),
+          () {
+            final now = DateTime.now();
+            final startOfDay = DateTime(now.year, now.month, now.day);
+            final endOfDay = startOfDay.add(const Duration(days: 1));
+            taskService.setFilterDueAfter(startOfDay);
+            taskService.setFilterDueBefore(endOfDay);
+          },
         ),
         const SizedBox(width: 4),
         _buildDateChip(
@@ -279,8 +285,10 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           false,
           () {
             final now = DateTime.now();
-            final weekEnd = now.add(Duration(days: 7 - now.weekday));
-            taskService.setFilterDueAfter(now);
+            final startOfDay = DateTime(now.year, now.month, now.day);
+            // weekday is 1=Mon..7=Sun; add days to reach end of Sunday
+            final weekEnd = startOfDay.add(Duration(days: 8 - now.weekday));
+            taskService.setFilterDueAfter(startOfDay);
             taskService.setFilterDueBefore(weekEnd);
           },
         ),
@@ -305,31 +313,5 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  String _statusLabel(TaskStatus status) {
-    return switch (status) {
-      TaskStatus.todo => 'To Do',
-      TaskStatus.inProgress => 'In Progress',
-      TaskStatus.inReview => 'In Review',
-      TaskStatus.blocked => 'Blocked',
-      TaskStatus.done => 'Done',
-    };
-  }
-
-  String _priorityLabel(TaskPriority priority) {
-    return switch (priority) {
-      TaskPriority.low => 'Low',
-      TaskPriority.medium => 'Medium',
-      TaskPriority.high => 'High',
-    };
-  }
-
-  Color _getPriorityColor(TaskPriority priority) {
-    return switch (priority) {
-      TaskPriority.low => Colors.green,
-      TaskPriority.medium => Colors.orange,
-      TaskPriority.high => Colors.red,
-    };
   }
 }

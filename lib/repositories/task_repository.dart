@@ -5,6 +5,9 @@ class TaskRepository extends HiveRepository<Task> {
   /// Secondary index: projectId -> set of task IDs for O(1) project lookups.
   final Map<String, Set<String>> _projectIndex = {};
 
+  /// Reverse index: taskId -> projectId for O(1) lookups.
+  final Map<String, String> _taskProjectIndex = {};
+
   TaskRepository() : super('tasks', 'TaskRepository');
 
   @override
@@ -18,18 +21,17 @@ class TaskRepository extends HiveRepository<Task> {
 
   void _rebuildProjectIndex() {
     _projectIndex.clear();
+    _taskProjectIndex.clear();
     for (final task in all) {
       final pid = task.projectId ?? '';
       _projectIndex.putIfAbsent(pid, () => {}).add(task.id);
+      _taskProjectIndex[task.id] = pid;
     }
   }
 
-  /// Find which project index currently holds this task ID.
+  /// Find which project index currently holds this task ID. O(1).
   String? _findCurrentProjectId(String taskId) {
-    for (final entry in _projectIndex.entries) {
-      if (entry.value.contains(taskId)) return entry.key;
-    }
-    return null;
+    return _taskProjectIndex[taskId];
   }
 
   @override
@@ -44,15 +46,17 @@ class TaskRepository extends HiveRepository<Task> {
     try {
       final result = await super.put(entity);
 
-      // Add to new project index
+      // Add to new project index and update reverse index
       final pid = entity.projectId ?? '';
       _projectIndex.putIfAbsent(pid, () => {}).add(entity.id);
+      _taskProjectIndex[entity.id] = pid;
 
       return result;
     } catch (e) {
-      // Restore old index entry on failure to keep index consistent
+      // Restore old index entries on failure to keep indices consistent
       if (oldPid != null) {
         _projectIndex.putIfAbsent(oldPid, () => {}).add(entity.id);
+        _taskProjectIndex[entity.id] = oldPid;
       }
       rethrow;
     }
@@ -65,6 +69,7 @@ class TaskRepository extends HiveRepository<Task> {
       final pid = task.projectId ?? '';
       _projectIndex[pid]?.remove(id);
     }
+    _taskProjectIndex.remove(id);
     await super.delete(id);
   }
 
@@ -80,6 +85,7 @@ class TaskRepository extends HiveRepository<Task> {
         final pid = task.projectId ?? '';
         _projectIndex[pid]?.remove(id);
       }
+      _taskProjectIndex.remove(id);
     }
     await super.deleteWhere(predicate);
   }

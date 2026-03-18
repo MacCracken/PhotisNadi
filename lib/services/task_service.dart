@@ -166,6 +166,7 @@ class TaskService extends ChangeNotifier
   void selectBoard(String boardId) {
     final project = selectedProject;
     if (project == null) return;
+    if (!project.boards.any((b) => b.id == boardId)) return;
     project.activeBoardId = boardId;
     project.modifiedAt = DateTime.now();
     projectRepo.put(project);
