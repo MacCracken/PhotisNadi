@@ -347,7 +347,7 @@ void main() {
     testWidgets('shows dialog with title and add button', (tester) async {
       await tester.pumpWidget(wrapDialogTrigger(
         taskService,
-        onTap: (ctx) => showAddTaskDialog(ctx),
+        onTap: showAddTaskDialog,
       ));
       await pumpSettled(tester);
 
@@ -362,7 +362,7 @@ void main() {
     testWidgets('shows priority dropdown', (tester) async {
       await tester.pumpWidget(wrapDialogTrigger(
         taskService,
-        onTap: (ctx) => showAddTaskDialog(ctx),
+        onTap: showAddTaskDialog,
       ));
       await pumpSettled(tester);
 
@@ -393,7 +393,7 @@ void main() {
     testWidgets('shows dialog with fields and create button', (tester) async {
       await tester.pumpWidget(wrapDialogTrigger(
         taskService,
-        onTap: (ctx) => showAddProjectDialog(ctx),
+        onTap: showAddProjectDialog,
       ));
       await pumpSettled(tester);
 
@@ -425,7 +425,7 @@ void main() {
     testWidgets('shows dialog with add button', (tester) async {
       await tester.pumpWidget(wrapDialogTrigger(
         taskService,
-        onTap: (ctx) => showAddRitualDialog(ctx),
+        onTap: showAddRitualDialog,
       ));
       await pumpSettled(tester);
 
@@ -439,7 +439,7 @@ void main() {
     testWidgets('shows title and description fields', (tester) async {
       await tester.pumpWidget(wrapDialogTrigger(
         taskService,
-        onTap: (ctx) => showAddRitualDialog(ctx),
+        onTap: showAddRitualDialog,
       ));
       await pumpSettled(tester);
 
@@ -470,7 +470,7 @@ void main() {
     testWidgets('shows empty state when no tags', (tester) async {
       await tester.pumpWidget(wrapDialogTrigger(
         taskService,
-        onTap: (ctx) => showTagManagementDialog(ctx),
+        onTap: showTagManagementDialog,
       ));
       await pumpSettled(tester);
 
@@ -484,7 +484,7 @@ void main() {
     testWidgets('shows add tag button', (tester) async {
       await tester.pumpWidget(wrapDialogTrigger(
         taskService,
-        onTap: (ctx) => showTagManagementDialog(ctx),
+        onTap: showTagManagementDialog,
       ));
       await pumpSettled(tester);
 
