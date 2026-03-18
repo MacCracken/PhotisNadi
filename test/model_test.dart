@@ -939,4 +939,60 @@ void main() {
       );
     });
   });
+
+  // ── formatStatus Extended Tests ──
+
+  group('formatStatus Extended Tests', () {
+    test('formats camelCase enum names with spaces', () {
+      expect(formatStatus(TaskStatus.inProgress), 'In Progress');
+      expect(formatStatus(TaskStatus.inReview), 'In Review');
+    });
+
+    test('formats single-word enum names with capital', () {
+      expect(formatStatus(TaskStatus.todo), 'Todo');
+      expect(formatStatus(TaskStatus.blocked), 'Blocked');
+      expect(formatStatus(TaskStatus.done), 'Done');
+    });
+  });
+
+  // ── weekNumber Extended Tests ──
+
+  group('weekNumber Extended Tests', () {
+    test('same week returns same number', () {
+      // Mon Mar 9 and Fri Mar 13, 2026 are same week
+      expect(
+        Ritual.weekNumber(DateTime(2026, 3, 9)),
+        Ritual.weekNumber(DateTime(2026, 3, 13)),
+      );
+    });
+
+    test('different weeks return different numbers', () {
+      // Mar 9 (Mon) and Mar 16 (Mon) are in consecutive weeks
+      expect(
+        Ritual.weekNumber(DateTime(2026, 3, 9)),
+        isNot(Ritual.weekNumber(DateTime(2026, 3, 16))),
+      );
+    });
+
+    test('year boundary - Dec 31 2025 is week 1 of 2026', () {
+      // Dec 31, 2025 is a Wednesday. ISO week containing Jan 1, 2026 (Thu)
+      // is week 1 of 2026. Dec 31 is in that same week.
+      final dec31 = DateTime(2025, 12, 31);
+      final jan1 = DateTime(2026, 1, 1);
+      expect(Ritual.weekNumber(dec31), Ritual.weekNumber(jan1));
+    });
+
+    test('weekNumber always returns positive', () {
+      // Test various dates across the year
+      for (var month = 1; month <= 12; month++) {
+        final date = DateTime(2026, month, 15);
+        expect(Ritual.weekNumber(date), greaterThan(0));
+      }
+    });
+
+    test('Jan 1 on Thursday is week 1', () {
+      // 2026: Jan 1 is Thursday => week 1
+      expect(Ritual.weekNumber(DateTime(2026, 1, 1)), 1);
+    });
+  });
 }

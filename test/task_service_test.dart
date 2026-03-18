@@ -1640,4 +1640,311 @@ void main() {
       expect(taskService.filterTags, contains('keep'));
     });
   });
+
+  // ── Bulk Operations Tests ──
+
+  group('Bulk Operations Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('bulkUpdateStatus updates multiple tasks', () async {
+      final t1 = await taskService.addTask('Task 1');
+      final t2 = await taskService.addTask('Task 2');
+      final t3 = await taskService.addTask('Task 3');
+
+      final result = await taskService.bulkUpdateStatus(
+        [t1!.id, t2!.id, t3!.id],
+        TaskStatus.inProgress,
+      );
+
+      expect(result, true);
+      expect(
+          taskService.tasks
+              .where((t) => t.status == TaskStatus.inProgress)
+              .length,
+          3);
+    });
+
+    test('bulkUpdateStatus skips blocked tasks for done status', () async {
+      final blocker = await taskService.addTask('Blocker');
+      final blocked = await taskService.addTask('Blocked');
+      await taskService.addTaskDependency(blocked!.id, blocker!.id);
+
+      // Only try to complete the blocked task (blocker still todo)
+      final result = await taskService.bulkUpdateStatus(
+        [blocked.id],
+        TaskStatus.done,
+      );
+
+      expect(result, true);
+      // Blocked task should remain todo because its dependency isn't done
+      final blockedTask =
+          taskService.tasks.firstWhere((t) => t.id == blocked.id);
+      expect(blockedTask.status, isNot(TaskStatus.done));
+    });
+
+    test('bulkUpdateStatus ignores unknown IDs', () async {
+      final t1 = await taskService.addTask('Task 1');
+      final result = await taskService.bulkUpdateStatus(
+        [t1!.id, 'nonexistent-id'],
+        TaskStatus.inProgress,
+      );
+      expect(result, true);
+      expect(taskService.tasks.first.status, TaskStatus.inProgress);
+    });
+
+    test('bulkDelete removes multiple tasks', () async {
+      final t1 = await taskService.addTask('Task 1');
+      final t2 = await taskService.addTask('Task 2');
+      final t3 = await taskService.addTask('Task 3');
+      final initialCount = taskService.tasks.length;
+
+      final result = await taskService.bulkDelete([t1!.id, t2!.id]);
+
+      expect(result, true);
+      expect(taskService.tasks.length, initialCount - 2);
+      expect(taskService.tasks.any((t) => t.id == t3!.id), true);
+    });
+
+    test('bulkDelete cleans up dependency references', () async {
+      final t1 = await taskService.addTask('Dep Target');
+      final t2 = await taskService.addTask('Has Dep');
+      await taskService.addTaskDependency(t2!.id, t1!.id);
+
+      await taskService.bulkDelete([t1.id]);
+
+      final updated = taskService.tasks.firstWhere((t) => t.id == t2.id);
+      expect(updated.dependsOn, isEmpty);
+    });
+
+    test('bulkMoveToProject moves tasks and assigns keys', () async {
+      final t1 = await taskService.addTask('Task 1');
+      final t2 = await taskService.addTask('Task 2');
+      final project = await taskService.addProject('Target', 'TG');
+
+      final result = await taskService.bulkMoveToProject(
+        [t1!.id, t2!.id],
+        project!.id,
+      );
+
+      expect(result, true);
+      final moved1 = taskService.tasks.firstWhere((t) => t.id == t1.id);
+      final moved2 = taskService.tasks.firstWhere((t) => t.id == t2.id);
+      expect(moved1.projectId, project.id);
+      expect(moved2.projectId, project.id);
+      expect(moved1.taskKey, isNotNull);
+      expect(moved2.taskKey, isNotNull);
+      expect(moved1.taskKey, isNot(moved2.taskKey));
+    });
+
+    test('bulkUpdatePriority updates multiple tasks', () async {
+      final t1 = await taskService.addTask('Task 1');
+      final t2 = await taskService.addTask('Task 2');
+
+      final result = await taskService.bulkUpdatePriority(
+        [t1!.id, t2!.id],
+        TaskPriority.high,
+      );
+
+      expect(result, true);
+      expect(taskService.tasks.every((t) => t.priority == TaskPriority.high),
+          true);
+    });
+
+    test('bulk operations fire single notifyListeners', () async {
+      final t1 = await taskService.addTask('Task 1');
+      final t2 = await taskService.addTask('Task 2');
+
+      // Flush any pending debounced notifications from addTask
+      await Future.delayed(Duration.zero);
+
+      int notifyCount = 0;
+      taskService.addListener(() => notifyCount++);
+
+      await taskService.bulkUpdateStatus(
+        [t1!.id, t2!.id],
+        TaskStatus.inProgress,
+      );
+      // Debounced — wait for timer
+      await Future.delayed(Duration.zero);
+      expect(notifyCount, 1);
+    });
+  });
+
+  // ── Debounce Tests ──
+
+  group('Debounce Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('notifyListeners coalesces multiple calls', () async {
+      int notifyCount = 0;
+      taskService.addListener(() => notifyCount++);
+
+      // Trigger multiple rapid notifyListeners calls
+      taskService.setSearchQuery('a');
+      taskService.setSearchQuery('ab');
+      taskService.setSearchQuery('abc');
+
+      // Before timer fires, no notifications yet
+      expect(notifyCount, 0);
+
+      await Future.delayed(Duration.zero);
+      // All coalesced into one notification
+      expect(notifyCount, 1);
+    });
+
+    test('notifyListenersImmediate fires synchronously', () async {
+      int notifyCount = 0;
+      taskService.addListener(() => notifyCount++);
+
+      taskService.notifyListenersImmediate();
+      // Fires synchronously — count should be 1 immediately
+      expect(notifyCount, 1);
+    });
+
+    test('notifyListenersImmediate cancels pending debounce', () async {
+      int notifyCount = 0;
+      taskService.addListener(() => notifyCount++);
+
+      // Start a debounced notification
+      taskService.setSearchQuery('test');
+      expect(notifyCount, 0);
+
+      // Immediate should cancel the pending and fire once
+      taskService.notifyListenersImmediate();
+      expect(notifyCount, 1);
+
+      // Wait for any pending timers — should not fire again
+      await Future.delayed(Duration.zero);
+      expect(notifyCount, 1);
+    });
+
+    test('dispose cancels pending timer', () async {
+      int notifyCount = 0;
+      taskService.addListener(() => notifyCount++);
+
+      taskService.setSearchQuery('test');
+      taskService.dispose();
+
+      await Future.delayed(Duration.zero);
+      // Timer was cancelled, no notification should fire
+      expect(notifyCount, 0);
+    });
+  });
+
+  // ── Recurrence Processing Tests ──
+
+  group('Recurrence Processing Tests', () {
+    late TaskService taskService;
+
+    setUp(() async {
+      await setUpTestHive();
+      _registerAdapters();
+      taskService = TaskService();
+      await taskService.init();
+    });
+
+    tearDown(() async {
+      await tearDownTestHive();
+    });
+
+    test('processRecurringTasks creates next daily occurrence', () async {
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final task = await taskService.addTask(
+        'Daily Task',
+        dueDate: yesterday,
+      );
+      task!.recurrence = 'daily';
+      task.status = TaskStatus.done;
+      await taskService.updateTask(task);
+
+      await taskService.processRecurringTasks();
+
+      // Should create a new task with next day's due date
+      final newTasks = taskService.tasks.where(
+        (t) => t.title == 'Daily Task' && t.status == TaskStatus.todo,
+      );
+      expect(newTasks.length, 1);
+      expect(newTasks.first.dueDate, isNotNull);
+      expect(newTasks.first.recurrence, 'daily');
+    });
+
+    test('processRecurringTasks creates next weekly occurrence', () async {
+      final lastWeek = DateTime.now().subtract(const Duration(days: 7));
+      final task = await taskService.addTask(
+        'Weekly Task',
+        dueDate: lastWeek,
+      );
+      task!.recurrence = 'weekly';
+      task.status = TaskStatus.done;
+      await taskService.updateTask(task);
+
+      await taskService.processRecurringTasks();
+
+      final newTasks = taskService.tasks.where(
+        (t) => t.title == 'Weekly Task' && t.status == TaskStatus.todo,
+      );
+      expect(newTasks.length, 1);
+      expect(newTasks.first.dueDate!.difference(lastWeek).inDays, 7);
+    });
+
+    test('processRecurringTasks clears recurrence on completed task', () async {
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final task = await taskService.addTask(
+        'Clear Recurrence',
+        dueDate: yesterday,
+      );
+      task!.recurrence = 'daily';
+      task.status = TaskStatus.done;
+      await taskService.updateTask(task);
+
+      await taskService.processRecurringTasks();
+
+      final original = taskService.tasks.firstWhere((t) => t.id == task.id);
+      expect(original.recurrence, isNull);
+    });
+
+    test('processRecurringTasks handles monthly with day clamping', () async {
+      // Jan 31 -> next should be Feb 28 (or 29 in leap year)
+      final jan31 = DateTime(2026, 1, 31);
+      final task = await taskService.addTask(
+        'Monthly Task',
+        dueDate: jan31,
+      );
+      task!.recurrence = 'monthly';
+      task.status = TaskStatus.done;
+      await taskService.updateTask(task);
+
+      await taskService.processRecurringTasks();
+
+      final newTasks = taskService.tasks.where(
+        (t) => t.title == 'Monthly Task' && t.status == TaskStatus.todo,
+      );
+      expect(newTasks.length, 1);
+      // Feb 2026 has 28 days
+      expect(newTasks.first.dueDate!.month, 2);
+      expect(newTasks.first.dueDate!.day, 28);
+    });
+  });
 }
