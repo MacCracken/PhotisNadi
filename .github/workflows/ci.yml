@@ -40,7 +40,7 @@ jobs:
       with:
         channel: 'stable'
     - run: flutter pub get
-    - run: flutter test test/unit_test.dart
+    - run: flutter test test/task_service_test.dart test/project_test.dart test/ritual_test.dart test/model_test.dart test/api_test.dart test/sync_test.dart test/service_test.dart test/hive_test.dart
 
   widget-test:
     name: Widget Tests
@@ -52,7 +52,7 @@ jobs:
       with:
         channel: 'stable'
     - run: flutter pub get
-    - run: flutter test test/widget_test.dart
+    - run: flutter test test/widget_test.dart test/widget_dialog_test.dart
 
   e2e-test:
     name: E2E Tests
