@@ -61,19 +61,17 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
     final currentScroll = _columnScrollController.position.pixels;
     if (maxScroll - currentScroll <= 100) {
       final taskService = context.read<TaskService>();
-      final hasMore = taskService.hasMoreTasksForColumn(
+      final totalCount = taskService.getTaskCountForColumn(
         widget.column.id,
         projectId: widget.project.id,
-        page: _currentPage,
       );
-      if (hasMore) {
-        setState(() {
-          _isLoadingMore = true;
-          _currentPage++;
-        });
-        // Reset loading flag after frame
+      final loadedCount = (_currentPage + 1) * AppConstants.defaultPageSize;
+      if (loadedCount < totalCount) {
+        // Guard against multiple increments in one frame
+        _isLoadingMore = true;
+        setState(() => _currentPage++);
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() => _isLoadingMore = false);
+          _isLoadingMore = false;
         });
       }
     }
@@ -539,8 +537,7 @@ class KanbanBoardState extends State<KanbanBoard> {
   }
 
   Widget _buildColumns(String selectedProjectId) {
-    final themeService = context.watch<ThemeService>();
-    final compact = themeService.isCompact;
+    final compact = context.select<ThemeService, bool>((s) => s.isCompact);
     final colWidth =
         compact ? AppConstants.columnWidthCompact : AppConstants.columnWidth;
     final colMargin =

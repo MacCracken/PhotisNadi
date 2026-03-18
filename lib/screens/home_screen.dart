@@ -5,6 +5,8 @@ import '../services/theme_service.dart';
 import '../services/sync_service.dart';
 import '../services/keyboard_shortcuts.dart';
 import '../widgets/dialogs/sync_dialogs.dart';
+import '../widgets/dialogs/task_dialogs.dart';
+import '../widgets/dialogs/ritual_dialogs.dart';
 import '../widgets/kanban_board.dart';
 import '../widgets/project_sidebar.dart';
 import '../widgets/rituals_sidebar.dart';
@@ -78,108 +80,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showAddTaskDialog() {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
+  void _showAddTaskDialog() => showAddTaskDialog(context);
 
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Task'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-              autofocus: true,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(labelText: 'Description'),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.isNotEmpty) {
-                context.read<TaskService>().addTask(
-                      titleController.text,
-                      description: descController.text.isNotEmpty
-                          ? descController.text
-                          : null,
-                    );
-                Navigator.pop(dialogContext);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    ).then((_) {
-      titleController.dispose();
-      descController.dispose();
-    });
-  }
-
-  void _showAddRitualDialog() {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Ritual'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-              autofocus: true,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: descController,
-              decoration:
-                  const InputDecoration(labelText: 'Description (optional)'),
-              maxLines: 2,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.isNotEmpty) {
-                context.read<TaskService>().addRitual(
-                      titleController.text,
-                      description: descController.text.isNotEmpty
-                          ? descController.text
-                          : null,
-                    );
-                Navigator.pop(dialogContext);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    ).then((_) {
-      titleController.dispose();
-      descController.dispose();
-    });
-  }
+  void _showAddRitualDialog() => showAddRitualDialog(context);
 
   @override
   Widget build(BuildContext context) {
@@ -327,8 +230,8 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
           ),
-          const Expanded(
-            child: KanbanBoard(),
+          Expanded(
+            child: KanbanBoard(key: _kanbanKey),
           ),
           RitualsSidebar(
             isCollapsed: _isRitualsCollapsed,

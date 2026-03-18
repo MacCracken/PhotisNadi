@@ -29,6 +29,7 @@ class ProjectHeader extends StatelessWidget {
   });
 
   void _showExportDialog(BuildContext context) {
+    if (project == null) return;
     final taskService = context.read<TaskService>();
 
     showDialog(
@@ -237,7 +238,7 @@ class _BoardSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final taskService = context.watch<TaskService>();
+    final taskService = context.read<TaskService>();
     final boards = project.boards;
     final activeBoard = project.activeBoard;
 
