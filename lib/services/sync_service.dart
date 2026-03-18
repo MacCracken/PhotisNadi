@@ -602,7 +602,7 @@ class SyncService extends ChangeNotifier {
           // Both sides changed since last sync — compare actual content
           final localData = task.toSyncMap(userId);
           final remoteData = remoteTask.toSyncMap(userId);
-          final contentDiffers = _mapsHaveDifferences(localData, remoteData,
+          final contentDiffers = mapsHaveDifferences(localData, remoteData,
               ignoreKeys: {'modified_at', 'user_id'});
 
           if (contentDiffers) {
@@ -759,7 +759,7 @@ class SyncService extends ChangeNotifier {
         if (bothModified) {
           final localData = project.toSyncMap(userId);
           final remoteData = remoteProject.toSyncMap(userId);
-          final contentDiffers = _mapsHaveDifferences(localData, remoteData,
+          final contentDiffers = mapsHaveDifferences(localData, remoteData,
               ignoreKeys: {'modified_at', 'user_id'});
 
           if (contentDiffers) {
@@ -1152,7 +1152,8 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Compare two sync maps for meaningful differences, ignoring specified keys.
-  bool _mapsHaveDifferences(
+  @visibleForTesting
+  static bool mapsHaveDifferences(
     Map<String, dynamic> a,
     Map<String, dynamic> b, {
     Set<String> ignoreKeys = const {},

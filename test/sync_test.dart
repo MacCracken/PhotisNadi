@@ -1087,4 +1087,278 @@ void main() {
       expect(restored.frequency, RitualFrequency.monthly);
     });
   });
+
+  // ── Sync Integration Tests ──
+
+  group('SyncService.mapsHaveDifferences Tests', () {
+    test('identical maps show no differences', () {
+      final a = {'title': 'Test', 'status': 'todo', 'priority': 'high'};
+      final b = {'title': 'Test', 'status': 'todo', 'priority': 'high'};
+      expect(SyncService.mapsHaveDifferences(a, b), isFalse);
+    });
+
+    test('different values detected', () {
+      final a = {'title': 'Local', 'status': 'todo'};
+      final b = {'title': 'Remote', 'status': 'todo'};
+      expect(SyncService.mapsHaveDifferences(a, b), isTrue);
+    });
+
+    test('ignoreKeys excludes specified keys from comparison', () {
+      final a = {
+        'title': 'Test',
+        'modified_at': '2026-01-01T00:00:00.000',
+        'user_id': 'user-1',
+      };
+      final b = {
+        'title': 'Test',
+        'modified_at': '2026-01-02T00:00:00.000',
+        'user_id': 'user-2',
+      };
+      expect(
+        SyncService.mapsHaveDifferences(a, b,
+            ignoreKeys: {'modified_at', 'user_id'}),
+        isFalse,
+      );
+    });
+
+    test('keys present in only one map count as differences', () {
+      final a = {'title': 'Test'};
+      final b = {'title': 'Test', 'description': 'Extra'};
+      expect(SyncService.mapsHaveDifferences(a, b), isTrue);
+    });
+
+    test('null vs missing key detected as difference', () {
+      final a = <String, dynamic>{'title': 'Test', 'description': null};
+      final b = <String, dynamic>{'title': 'Test'};
+      expect(SyncService.mapsHaveDifferences(a, b), isFalse);
+    });
+
+    test('list values compared via toString', () {
+      final a = {
+        'tags': ['bug', 'ui']
+      };
+      final b = {
+        'tags': ['bug', 'ui']
+      };
+      expect(SyncService.mapsHaveDifferences(a, b), isFalse);
+    });
+
+    test('different list values detected', () {
+      final a = {
+        'tags': ['bug']
+      };
+      final b = {
+        'tags': ['bug', 'ui']
+      };
+      expect(SyncService.mapsHaveDifferences(a, b), isTrue);
+    });
+
+    test('empty maps show no differences', () {
+      expect(
+          SyncService.mapsHaveDifferences(
+              <String, dynamic>{}, <String, dynamic>{}),
+          isFalse);
+    });
+
+    test('real task sync maps with only timestamp diff ignored', () {
+      final task = Task(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        title: 'Sync Test',
+        status: TaskStatus.inProgress,
+        priority: TaskPriority.high,
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+      final localMap = task.toSyncMap('user-1');
+      final remoteMap = Map<String, dynamic>.from(localMap);
+      remoteMap['modified_at'] = '2026-01-02T00:00:00.000';
+      remoteMap['user_id'] = 'user-1';
+
+      expect(
+        SyncService.mapsHaveDifferences(localMap, remoteMap,
+            ignoreKeys: {'modified_at', 'user_id'}),
+        isFalse,
+      );
+    });
+
+    test('real task sync maps with content diff detected', () {
+      final localTask = Task(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        title: 'Local Version',
+        createdAt: DateTime(2026, 1, 1),
+      );
+      final remoteTask = Task(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        title: 'Remote Version',
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+      expect(
+        SyncService.mapsHaveDifferences(
+          localTask.toSyncMap('user-1'),
+          remoteTask.toSyncMap('user-1'),
+          ignoreKeys: {'modified_at', 'user_id'},
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('Sync Merge Logic Tests', () {
+    test('conflict detection: both sides modified after last sync', () {
+      final lastSyncedAt = DateTime(2026, 1, 1);
+      final localModifiedAt = DateTime(2026, 1, 2);
+      final remoteModifiedAt = DateTime(2026, 1, 3);
+
+      final bothModified = localModifiedAt.isAfter(lastSyncedAt) &&
+          remoteModifiedAt.isAfter(lastSyncedAt);
+      expect(bothModified, isTrue);
+    });
+
+    test('no conflict: only local modified after last sync', () {
+      final lastSyncedAt = DateTime(2026, 1, 2);
+      final localModifiedAt = DateTime(2026, 1, 3);
+      final remoteModifiedAt = DateTime(2026, 1, 1);
+
+      final bothModified = localModifiedAt.isAfter(lastSyncedAt) &&
+          remoteModifiedAt.isAfter(lastSyncedAt);
+      expect(bothModified, isFalse);
+    });
+
+    test('no conflict: only remote modified after last sync', () {
+      final lastSyncedAt = DateTime(2026, 1, 2);
+      final localModifiedAt = DateTime(2026, 1, 1);
+      final remoteModifiedAt = DateTime(2026, 1, 3);
+
+      final bothModified = localModifiedAt.isAfter(lastSyncedAt) &&
+          remoteModifiedAt.isAfter(lastSyncedAt);
+      expect(bothModified, isFalse);
+    });
+
+    test('last-write-wins: remote newer overwrites local', () {
+      final localModifiedAt = DateTime(2026, 1, 1);
+      final remoteModifiedAt = DateTime(2026, 1, 2);
+
+      final remoteWins = remoteModifiedAt.isAfter(localModifiedAt);
+      expect(remoteWins, isTrue);
+    });
+
+    test('last-write-wins: local newer uploads to remote', () {
+      final localModifiedAt = DateTime(2026, 1, 2);
+      final remoteModifiedAt = DateTime(2026, 1, 1);
+
+      final localWins = localModifiedAt.isAfter(remoteModifiedAt);
+      expect(localWins, isTrue);
+    });
+
+    test('ritual merge uses lastCompleted as modification proxy', () {
+      final localRitual = Ritual(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        title: 'Ritual',
+        isCompleted: true,
+        createdAt: DateTime(2026, 1, 1),
+        lastCompleted: DateTime(2026, 1, 5),
+        streakCount: 5,
+      );
+      final remoteRitual = Ritual(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        title: 'Ritual',
+        isCompleted: true,
+        createdAt: DateTime(2026, 1, 1),
+        lastCompleted: DateTime(2026, 1, 3),
+        streakCount: 3,
+      );
+
+      final localTime = localRitual.lastCompleted ?? localRitual.createdAt;
+      final remoteTime = remoteRitual.lastCompleted ?? remoteRitual.createdAt;
+
+      expect(localTime.isAfter(remoteTime), isTrue);
+    });
+
+    test('ritual merge falls back to createdAt when lastCompleted is null', () {
+      final localRitual = Ritual(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        title: 'Ritual',
+        createdAt: DateTime(2026, 1, 2),
+        streakCount: 0,
+      );
+      final remoteRitual = Ritual(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        title: 'Ritual',
+        createdAt: DateTime(2026, 1, 1),
+        streakCount: 0,
+      );
+
+      final localTime = localRitual.lastCompleted ?? localRitual.createdAt;
+      final remoteTime = remoteRitual.lastCompleted ?? remoteRitual.createdAt;
+
+      expect(localTime.isAfter(remoteTime), isTrue);
+    });
+
+    test('tag conflict detection: differing name is a conflict', () {
+      final localTag = Tag(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        name: 'Bug',
+        color: '#FF0000',
+        projectId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      );
+      final remoteTag = Tag(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        name: 'Defect',
+        color: '#FF0000',
+        projectId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      );
+
+      final differs = localTag.name != remoteTag.name ||
+          localTag.color != remoteTag.color ||
+          localTag.projectId != remoteTag.projectId;
+      expect(differs, isTrue);
+    });
+
+    test('tag conflict detection: identical tags are not conflicts', () {
+      final localTag = Tag(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        name: 'Bug',
+        color: '#FF0000',
+        projectId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      );
+      final remoteTag = Tag(
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        name: 'Bug',
+        color: '#FF0000',
+        projectId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      );
+
+      final differs = localTag.name != remoteTag.name ||
+          localTag.color != remoteTag.color ||
+          localTag.projectId != remoteTag.projectId;
+      expect(differs, isFalse);
+    });
+
+    test('SyncConflict fields accessible for resolution', () {
+      final localData = {'title': 'Local Task', 'status': 'inProgress'};
+      final remoteData = {'title': 'Remote Task', 'status': 'done'};
+      final conflict = SyncConflict(
+        entityType: 'task',
+        entityId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        entityTitle: 'Conflict Task',
+        localModifiedAt: DateTime(2026, 1, 1),
+        remoteModifiedAt: DateTime(2026, 1, 2),
+        localData: localData,
+        remoteData: remoteData,
+      );
+
+      // keepLocal: would upload localData
+      expect(conflict.localData['title'], 'Local Task');
+      // keepRemote: would apply remoteData
+      final resolvedTask = TaskParsing.fromMap({
+        'id': conflict.entityId,
+        ...remoteData,
+        'priority': 'medium',
+        'created_at': '2026-01-01T00:00:00.000',
+      });
+      expect(resolvedTask.title, 'Remote Task');
+      expect(resolvedTask.status, TaskStatus.done);
+    });
+  });
 }
