@@ -947,13 +947,14 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final projectsResult = await syncProjects();
-      final tasksResult = await syncTasks();
-      final ritualsResult = await syncRituals();
-      final tagsResult = await syncTags();
+      final results = await Future.wait([
+        syncProjects(),
+        syncTasks(),
+        syncRituals(),
+        syncTags(),
+      ]);
 
-      final success =
-          projectsResult && tasksResult && ritualsResult && tagsResult;
+      final success = results.every((r) => r);
 
       _syncState = success ? SyncState.success : SyncState.error;
       if (success) {

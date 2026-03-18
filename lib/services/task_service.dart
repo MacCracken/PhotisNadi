@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import '../models/task.dart';
@@ -37,6 +38,25 @@ class TaskService extends ChangeNotifier
 
   bool _isLoading = true;
   String? _error;
+  Timer? _notifyTimer;
+
+  /// Debounced notifyListeners — coalesces multiple calls within the same
+  /// microtask frame into a single notification.
+  @override
+  void notifyListeners() {
+    _notifyTimer ??= Timer(Duration.zero, () {
+      _notifyTimer = null;
+      super.notifyListeners();
+    });
+  }
+
+  /// Immediate notification for init/loading state transitions where the UI
+  /// must update synchronously.
+  void notifyListenersImmediate() {
+    _notifyTimer?.cancel();
+    _notifyTimer = null;
+    super.notifyListeners();
+  }
 
   TaskService({
     TaskRepository? taskRepo,
@@ -70,7 +90,7 @@ class TaskService extends ChangeNotifier
   Future<void> init() async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    notifyListenersImmediate();
 
     try {
       await PerformanceMonitor.measureAsync('TaskService.init', () async {
@@ -92,7 +112,7 @@ class TaskService extends ChangeNotifier
       });
       _isLoading = false;
       PerformanceMonitor.report();
-      notifyListeners();
+      notifyListenersImmediate();
     } catch (e, stackTrace) {
       developer.log(
         'Failed to initialize task service',
@@ -102,7 +122,7 @@ class TaskService extends ChangeNotifier
       );
       _error = 'Failed to initialize: $e';
       _isLoading = false;
-      notifyListeners();
+      notifyListenersImmediate();
       rethrow;
     }
   }

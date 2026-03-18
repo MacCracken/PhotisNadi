@@ -35,15 +35,26 @@ void showAddRitualDialog(BuildContext context) {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             if (titleController.text.isNotEmpty) {
-              context.read<TaskService>().addRitual(
+              final result = await context.read<TaskService>().addRitual(
                     titleController.text,
                     description: descController.text.isNotEmpty
                         ? descController.text
                         : null,
                   );
-              Navigator.pop(context);
+              if (context.mounted) {
+                if (result != null) {
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to add ritual'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             }
           },
           child: const Text('Add'),
@@ -89,15 +100,28 @@ void showEditRitualDialog(BuildContext context, Ritual ritual) {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             if (titleController.text.isNotEmpty) {
               final updatedRitual = ritual.copyWith(
                 title: titleController.text,
                 description:
                     descController.text.isNotEmpty ? descController.text : null,
               );
-              context.read<TaskService>().updateRitual(updatedRitual);
-              Navigator.pop(context);
+              final success = await context
+                  .read<TaskService>()
+                  .updateRitual(updatedRitual);
+              if (context.mounted) {
+                if (success) {
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to save ritual'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             }
           },
           child: const Text('Save'),

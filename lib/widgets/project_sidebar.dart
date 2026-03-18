@@ -22,6 +22,14 @@ class ProjectSidebar extends StatefulWidget {
 
 class _ProjectSidebarState extends State<ProjectSidebar> {
   bool _showArchived = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,24 +148,80 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
     );
   }
 
+  List<Project> _filterProjects(List<Project> projects) {
+    if (_searchQuery.isEmpty) return projects;
+    final query = _searchQuery.toLowerCase();
+    return projects
+        .where((p) => p.name.toLowerCase().contains(query))
+        .toList();
+  }
+
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search projects...',
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          prefixIcon: const Icon(Icons.search, size: 18),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 16),
+                  onPressed: () {
+                    setState(() {
+                      _searchController.clear();
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        style: const TextStyle(fontSize: 13),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+      ),
+    );
+  }
+
   Widget _buildExpandedView(
     List<Project> activeProjects,
     List<Project> archivedProjects,
     String? selectedProjectId,
   ) {
     final taskService = context.read<TaskService>();
+    final filteredActive = _filterProjects(activeProjects);
+    final filteredArchived = _filterProjects(archivedProjects);
     return ListView(
       padding: const EdgeInsets.all(8),
       children: [
-        if (activeProjects.isEmpty)
+        _buildSearchField(),
+        if (filteredActive.isEmpty && _searchQuery.isEmpty)
           _buildEmptyState()
+        else if (filteredActive.isEmpty && _searchQuery.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'No projects match "$_searchQuery"',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          )
         else
-          ...activeProjects.map((project) => _buildProjectTile(
+          ...filteredActive.map((project) => _buildProjectTile(
                 project,
                 selectedProjectId,
                 taskService,
               )),
-        if (archivedProjects.isNotEmpty) ...[
+        if (filteredArchived.isNotEmpty) ...[
           const SizedBox(height: 16),
           InkWell(
             onTap: () {
@@ -181,7 +245,7 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Archived (${archivedProjects.length})',
+                    'Archived (${filteredArchived.length})',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade600,
@@ -193,7 +257,7 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
             ),
           ),
           if (_showArchived)
-            ...archivedProjects.map((project) => _buildProjectTile(
+            ...filteredArchived.map((project) => _buildProjectTile(
                   project,
                   selectedProjectId,
                   taskService,

@@ -31,6 +31,44 @@ class PaginatedTaskColumn extends StatefulWidget {
 
 class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
   int _currentPage = 0;
+  final ScrollController _columnScrollController = ScrollController();
+  bool _isLoadingMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _columnScrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _columnScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isLoadingMore) return;
+    final maxScroll = _columnScrollController.position.maxScrollExtent;
+    final currentScroll = _columnScrollController.position.pixels;
+    if (maxScroll - currentScroll <= 100) {
+      final taskService = context.read<TaskService>();
+      final hasMore = taskService.hasMoreTasksForColumn(
+        widget.column.id,
+        projectId: widget.project.id,
+        page: _currentPage,
+      );
+      if (hasMore) {
+        setState(() {
+          _isLoadingMore = true;
+          _currentPage++;
+        });
+        // Reset loading flag after frame
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _isLoadingMore = false);
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,13 +126,14 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
                   return _buildEmptyState();
                 }
                 return ListView.builder(
+                  controller: _columnScrollController,
                   padding: const EdgeInsets.symmetric(
                     vertical: AppConstants.smallPadding,
                   ),
                   itemCount: tasks.length + (hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == tasks.length) {
-                      return _buildLoadMoreButton(taskService);
+                      return _buildLoadingIndicator();
                     }
                     final task = tasks[index];
                     return _buildDraggableTask(task);
@@ -128,16 +167,15 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
     );
   }
 
-  Widget _buildLoadMoreButton(TaskService taskService) {
-    return Padding(
-      padding: const EdgeInsets.all(AppConstants.smallPadding),
-      child: TextButton(
-        onPressed: () {
-          setState(() {
-            _currentPage++;
-          });
-        },
-        child: const Text('Load more'),
+  Widget _buildLoadingIndicator() {
+    return const Padding(
+      padding: EdgeInsets.all(AppConstants.smallPadding),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
       ),
     );
   }

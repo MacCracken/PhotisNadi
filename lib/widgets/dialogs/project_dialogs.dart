@@ -101,10 +101,10 @@ void showAddProjectDialog(BuildContext context) {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (nameController.text.isNotEmpty &&
                   keyController.text.isNotEmpty) {
-                context.read<TaskService>().addProject(
+                final result = await context.read<TaskService>().addProject(
                       nameController.text,
                       keyController.text,
                       description: descController.text.isNotEmpty
@@ -112,7 +112,18 @@ void showAddProjectDialog(BuildContext context) {
                           : null,
                       color: selectedColor,
                     );
-                Navigator.pop(context);
+                if (context.mounted) {
+                  if (result != null) {
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to create project'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               }
             },
             child: const Text('Create'),
