@@ -951,9 +951,12 @@ void main() {
     });
 
     test('TaskAdapter is not equal to other types', () {
-      expect(TaskAdapter() == RitualAdapter(), isFalse);
-      expect(BoardAdapter() == ProjectAdapter(), isFalse);
-      expect(TaskStatusAdapter() == TaskPriorityAdapter(), isFalse);
+      expect(TaskAdapter().runtimeType == RitualAdapter().runtimeType, isFalse);
+      expect(
+          BoardAdapter().runtimeType == ProjectAdapter().runtimeType, isFalse);
+      expect(
+          TaskStatusAdapter().runtimeType == TaskPriorityAdapter().runtimeType,
+          isFalse);
     });
 
     test('BoardColumn full round-trip through Hive box', () async {

@@ -371,13 +371,13 @@ void main() {
   group('CollapsibleSidebar Widget Tests', () {
     testWidgets('renders expanded with correct width', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: CollapsibleSidebar(
               isCollapsed: false,
               expandedWidth: 300,
-              header: const Text('Header'),
-              child: const Text('Content'),
+              header: Text('Header'),
+              child: Text('Content'),
             ),
           ),
         ),
@@ -394,13 +394,13 @@ void main() {
 
     testWidgets('renders collapsed with correct width', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: CollapsibleSidebar(
               isCollapsed: true,
               collapsedWidth: 60,
-              header: const Text('Header'),
-              child: const Text('Content'),
+              header: Text('Header'),
+              child: Text('Content'),
             ),
           ),
         ),
@@ -504,7 +504,7 @@ void main() {
           home: Scaffold(
             body: PopupMenuButton<String>(
               itemBuilder: (context) => [
-                PopupMenuItem(
+                const PopupMenuItem(
                   child: ActionMenuItem(
                     value: 'test',
                     icon: Icons.star,
@@ -530,7 +530,7 @@ void main() {
           home: Scaffold(
             body: PopupMenuButton<String>(
               itemBuilder: (context) => [
-                PopupMenuItem(
+                const PopupMenuItem(
                   child: ActionMenuItem(
                     value: 'test',
                     icon: Icons.delete,
