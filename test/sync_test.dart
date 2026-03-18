@@ -631,10 +631,8 @@ void main() {
         createdAt: DateTime(2026, 1, 1),
         color: '#123456',
         columns: [
-          BoardColumn(
-              id: 'c1', title: 'A', order: 0, status: TaskStatus.todo),
-          BoardColumn(
-              id: 'c2', title: 'B', order: 1, status: TaskStatus.done),
+          BoardColumn(id: 'c1', title: 'A', order: 0, status: TaskStatus.todo),
+          BoardColumn(id: 'c2', title: 'B', order: 1, status: TaskStatus.done),
         ],
       );
 

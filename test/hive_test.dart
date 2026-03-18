@@ -54,17 +54,26 @@ void main() {
         (c) => c.status == TaskStatus.todo,
       );
       final page0 = taskService.getTasksForColumnPaginated(
-        todoColumn.id, projectId: project.id, page: 0, pageSize: 10,
+        todoColumn.id,
+        projectId: project.id,
+        page: 0,
+        pageSize: 10,
       );
       expect(page0.length, 10);
 
       final page1 = taskService.getTasksForColumnPaginated(
-        todoColumn.id, projectId: project.id, page: 1, pageSize: 10,
+        todoColumn.id,
+        projectId: project.id,
+        page: 1,
+        pageSize: 10,
       );
       expect(page1.length, 10);
 
       final page2 = taskService.getTasksForColumnPaginated(
-        todoColumn.id, projectId: project.id, page: 2, pageSize: 10,
+        todoColumn.id,
+        projectId: project.id,
+        page: 2,
+        pageSize: 10,
       );
       expect(page2.length, 5);
     });
@@ -82,7 +91,8 @@ void main() {
         (c) => c.status == TaskStatus.todo,
       );
       final count = taskService.getTaskCountForColumn(
-        todoColumn.id, projectId: project.id,
+        todoColumn.id,
+        projectId: project.id,
       );
       expect(count, 3);
     });
@@ -101,13 +111,19 @@ void main() {
       );
       expect(
         taskService.hasMoreTasksForColumn(
-          todoColumn.id, projectId: project.id, page: 0, pageSize: 10,
+          todoColumn.id,
+          projectId: project.id,
+          page: 0,
+          pageSize: 10,
         ),
         isTrue,
       );
       expect(
         taskService.hasMoreTasksForColumn(
-          todoColumn.id, projectId: project.id, page: 1, pageSize: 10,
+          todoColumn.id,
+          projectId: project.id,
+          page: 1,
+          pageSize: 10,
         ),
         isFalse,
       );
@@ -126,7 +142,10 @@ void main() {
       );
       expect(
         taskService.hasMoreTasksForColumn(
-          todoColumn.id, projectId: project.id, page: 0, pageSize: 10,
+          todoColumn.id,
+          projectId: project.id,
+          page: 0,
+          pageSize: 10,
         ),
         isFalse,
       );
@@ -144,7 +163,10 @@ void main() {
         (c) => c.status == TaskStatus.todo,
       );
       final page1 = taskService.getTasksForColumnPaginated(
-        todoColumn.id, projectId: project.id, page: 1, pageSize: 10,
+        todoColumn.id,
+        projectId: project.id,
+        page: 1,
+        pageSize: 10,
       );
       expect(page1.length, 0);
     });
@@ -427,7 +449,8 @@ void main() {
 
     test('Project round-trips through Hive with all fields', () async {
       final project = await taskService.addProject(
-        'Full Project', 'FP',
+        'Full Project',
+        'FP',
         description: 'A test project',
         color: '#FF5500',
         iconName: 'star',
@@ -454,15 +477,22 @@ void main() {
         title: 'Sprint 1',
         createdAt: DateTime.now(),
         columns: [
-          BoardColumn(id: 'c1', title: 'New', order: 0, status: TaskStatus.todo),
-          BoardColumn(id: 'c2', title: 'Active', order: 1, status: TaskStatus.inProgress),
-          BoardColumn(id: 'c3', title: 'Complete', order: 2, status: TaskStatus.done),
+          BoardColumn(
+              id: 'c1', title: 'New', order: 0, status: TaskStatus.todo),
+          BoardColumn(
+              id: 'c2',
+              title: 'Active',
+              order: 1,
+              status: TaskStatus.inProgress),
+          BoardColumn(
+              id: 'c3', title: 'Complete', order: 2, status: TaskStatus.done),
         ],
       );
       await taskService.addBoard(project!.id, board);
 
       final loaded = taskService.projects.firstWhere((p) => p.id == project.id);
-      final loadedBoard = loaded.boards.firstWhere((b) => b.id == 'custom-board');
+      final loadedBoard =
+          loaded.boards.firstWhere((b) => b.id == 'custom-board');
       expect(loadedBoard.title, 'Sprint 1');
       expect(loadedBoard.columns.length, 3);
       expect(loadedBoard.columns[0].title, 'New');
@@ -555,7 +585,8 @@ void main() {
   // ── Hive Disk Persistence Tests ──
 
   group('Hive Disk Persistence Tests', () {
-    test('Tasks persist and reload through Hive binary serialization', () async {
+    test('Tasks persist and reload through Hive binary serialization',
+        () async {
       await setUpTestHive();
       _registerAdapters();
 
@@ -595,8 +626,10 @@ void main() {
         title: 'Persist Board',
         createdAt: DateTime.now(),
         columns: [
-          BoardColumn(id: 'pb-c1', title: 'New', order: 0, status: TaskStatus.todo),
-          BoardColumn(id: 'pb-c2', title: 'Done', order: 1, status: TaskStatus.done),
+          BoardColumn(
+              id: 'pb-c1', title: 'New', order: 0, status: TaskStatus.todo),
+          BoardColumn(
+              id: 'pb-c2', title: 'Done', order: 1, status: TaskStatus.done),
         ],
       );
       await service.addBoard(project.id, board);
@@ -606,7 +639,8 @@ void main() {
       final service2 = TaskService();
       await service2.init();
 
-      final loadedTasks = service2.tasks.where((t) => t.title == 'Persisted Task');
+      final loadedTasks =
+          service2.tasks.where((t) => t.title == 'Persisted Task');
       expect(loadedTasks, isNotEmpty);
       final lt = loadedTasks.first;
       expect(lt.description, 'desc');
@@ -620,14 +654,16 @@ void main() {
       expect(lt.recurrence, 'daily');
       expect(lt.attachments, ['/file.txt']);
 
-      final loadedRituals = service2.rituals.where((r) => r.title == 'Persisted Ritual');
+      final loadedRituals =
+          service2.rituals.where((r) => r.title == 'Persisted Ritual');
       expect(loadedRituals, isNotEmpty);
       final lr = loadedRituals.first;
       expect(lr.description, 'ritual desc');
       expect(lr.frequency, RitualFrequency.weekly);
       expect(lr.streakCount, 5);
 
-      final loadedProjects = service2.projects.where((p) => p.name == 'Persist Test');
+      final loadedProjects =
+          service2.projects.where((p) => p.name == 'Persist Test');
       expect(loadedProjects, isNotEmpty);
       final lp = loadedProjects.first;
       expect(lp.projectKey, 'PT');
@@ -798,8 +834,10 @@ void main() {
         columnIds: ['c1', 'c2'],
         color: '#FF0000',
         columns: [
-          BoardColumn(id: 'c1', title: 'Todo', order: 0, status: TaskStatus.todo),
-          BoardColumn(id: 'c2', title: 'Done', order: 1, status: TaskStatus.done),
+          BoardColumn(
+              id: 'c1', title: 'Todo', order: 0, status: TaskStatus.todo),
+          BoardColumn(
+              id: 'c2', title: 'Done', order: 1, status: TaskStatus.done),
         ],
       );
       await box.put(board.id, board);
@@ -883,7 +921,8 @@ void main() {
 
       final box2 = await Hive.openBox<Task>('test_task_status_rt');
       for (final status in TaskStatus.values) {
-        final read = box2.get('550e8400-e29b-41d4-a716-44665544050${status.index}')!;
+        final read =
+            box2.get('550e8400-e29b-41d4-a716-44665544050${status.index}')!;
         expect(read.status, status);
       }
       await box2.close();
@@ -904,7 +943,8 @@ void main() {
 
       final box2 = await Hive.openBox<Task>('test_task_priority_rt');
       for (final priority in TaskPriority.values) {
-        final read = box2.get('550e8400-e29b-41d4-a716-44665544060${priority.index}')!;
+        final read =
+            box2.get('550e8400-e29b-41d4-a716-44665544060${priority.index}')!;
         expect(read.priority, priority);
       }
       await box2.close();
@@ -956,7 +996,8 @@ void main() {
 
       final box2 = await Hive.openBox<Ritual>('test_freq_rt');
       for (final freq in RitualFrequency.values) {
-        final read = box2.get('550e8400-e29b-41d4-a716-44665544070${freq.index}')!;
+        final read =
+            box2.get('550e8400-e29b-41d4-a716-44665544070${freq.index}')!;
         expect(read.frequency, freq);
       }
       await box2.close();

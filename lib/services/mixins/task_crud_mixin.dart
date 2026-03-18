@@ -143,8 +143,7 @@ mixin TaskCrudMixin on ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      developer.log(
-          'Failed to remove dependency: $taskId -> $dependsOnTaskId',
+      developer.log('Failed to remove dependency: $taskId -> $dependsOnTaskId',
           name: 'TaskService', error: e, stackTrace: stackTrace);
       return false;
     }
@@ -323,6 +322,86 @@ mixin TaskCrudMixin on ChangeNotifier {
     return true;
   }
 
+  // ── Bulk Operations ──
+
+  Future<bool> bulkUpdateStatus(List<String> ids, TaskStatus status) async {
+    try {
+      for (final id in ids) {
+        final task = taskRepo.get(id);
+        if (task == null) continue;
+        if (status == TaskStatus.done && isTaskBlocked(task)) continue;
+        task.status = status;
+        task.modifiedAt = DateTime.now();
+        await taskRepo.put(task);
+      }
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log('Failed to bulk update status',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> bulkDelete(List<String> ids) async {
+    try {
+      for (final id in ids) {
+        await taskRepo.delete(id);
+        await taskRepo.removeDependencyReferences(id);
+      }
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log('Failed to bulk delete tasks',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> bulkMoveToProject(List<String> ids, String projectId) async {
+    try {
+      final project = projectRepo.get(projectId);
+      for (final id in ids) {
+        final task = taskRepo.get(id);
+        if (task == null) continue;
+        task.projectId = projectId;
+        if (project != null) {
+          task.taskKey = project.generateNextTaskKey();
+          await project.save();
+        } else {
+          task.taskKey = null;
+        }
+        task.modifiedAt = DateTime.now();
+        await taskRepo.put(task);
+      }
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log('Failed to bulk move tasks',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> bulkUpdatePriority(
+      List<String> ids, TaskPriority priority) async {
+    try {
+      for (final id in ids) {
+        final task = taskRepo.get(id);
+        if (task == null) continue;
+        task.priority = priority;
+        task.modifiedAt = DateTime.now();
+        await taskRepo.put(task);
+      }
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      developer.log('Failed to bulk update priority',
+          name: 'TaskService', error: e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
   /// Check recurring tasks and create new instances if the completed one is due.
   Future<void> processRecurringTasks() async {
     final now = DateTime.now();
@@ -342,8 +421,7 @@ mixin TaskCrudMixin on ChangeNotifier {
             // Clamp day to the last day of the next month to avoid overflow
             // (e.g., Jan 31 -> Feb 28, not Mar 3)
             final nextMonth = task.dueDate!.month + 1;
-            final nextYear =
-                task.dueDate!.year + (nextMonth > 12 ? 1 : 0);
+            final nextYear = task.dueDate!.year + (nextMonth > 12 ? 1 : 0);
             final month = nextMonth > 12 ? nextMonth - 12 : nextMonth;
             final lastDay = DateTime(nextYear, month + 1, 0).day;
             final day =

@@ -135,22 +135,26 @@ extension ProjectParsing on Project {
       'modified_at': modifiedAt.toIso8601String(),
       'shared_with': sharedWith,
       'owner_id': ownerId,
-      'boards': boards.map((b) => {
-        'id': b.id,
-        'title': b.title,
-        'description': b.description,
-        'created_at': b.createdAt.toIso8601String(),
-        'column_ids': b.columnIds,
-        'color': b.color,
-        'columns': b.columns.map((c) => {
-          'id': c.id,
-          'title': c.title,
-          'task_ids': c.taskIds,
-          'order': c.order,
-          'color': c.color,
-          'status': c.status.name,
-        }).toList(),
-      }).toList(),
+      'boards': boards
+          .map((b) => {
+                'id': b.id,
+                'title': b.title,
+                'description': b.description,
+                'created_at': b.createdAt.toIso8601String(),
+                'column_ids': b.columnIds,
+                'color': b.color,
+                'columns': b.columns
+                    .map((c) => {
+                          'id': c.id,
+                          'title': c.title,
+                          'task_ids': c.taskIds,
+                          'order': c.order,
+                          'color': c.color,
+                          'status': c.status.name,
+                        })
+                    .toList(),
+              })
+          .toList(),
       'active_board_id': activeBoardId,
     };
   }

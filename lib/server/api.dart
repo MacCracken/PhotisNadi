@@ -311,8 +311,7 @@ Router buildApiRouter({
     if (!keyRegex.hasMatch(normalizedKey)) {
       return Response(400,
           body: jsonEncode({
-            'error':
-                'project_key must be 2-5 uppercase alphanumeric characters'
+            'error': 'project_key must be 2-5 uppercase alphanumeric characters'
           }),
           headers: _json);
     }
@@ -343,8 +342,7 @@ Router buildApiRouter({
         body: jsonEncode(projectToJson(project)), headers: _json);
   });
 
-  router.patch('/api/v1/projects/<id>',
-      (Request request, String id) async {
+  router.patch('/api/v1/projects/<id>', (Request request, String id) async {
     final project = projects.get(id);
     if (project == null) {
       return Response(404,
@@ -389,8 +387,7 @@ Router buildApiRouter({
     return Response.ok(jsonEncode(projectToJson(project)), headers: _json);
   });
 
-  router.delete('/api/v1/projects/<id>',
-      (Request request, String id) async {
+  router.delete('/api/v1/projects/<id>', (Request request, String id) async {
     final project = projects.get(id);
     if (project == null) {
       return Response(404,
@@ -398,8 +395,7 @@ Router buildApiRouter({
     }
 
     // Delete all tasks belonging to this project
-    final projectTasks =
-        tasks.values.where((t) => t.projectId == id).toList();
+    final projectTasks = tasks.values.where((t) => t.projectId == id).toList();
     for (final task in projectTasks) {
       await tasks.delete(task.id);
     }
@@ -479,8 +475,7 @@ Router buildApiRouter({
         body: jsonEncode(ritualToJson(ritual)), headers: _json);
   });
 
-  router.patch('/api/v1/rituals/<id>',
-      (Request request, String id) async {
+  router.patch('/api/v1/rituals/<id>', (Request request, String id) async {
     final ritual = rituals.get(id);
     if (ritual == null) {
       return Response(404,
@@ -520,8 +515,7 @@ Router buildApiRouter({
     return Response.ok(jsonEncode(ritualToJson(ritual)), headers: _json);
   });
 
-  router.delete('/api/v1/rituals/<id>',
-      (Request request, String id) async {
+  router.delete('/api/v1/rituals/<id>', (Request request, String id) async {
     final ritual = rituals.get(id);
     if (ritual == null) {
       return Response(404,

@@ -312,8 +312,8 @@ void main() {
     });
 
     test('getProjectSharedUsers returns empty for missing project', () {
-      final users = taskService.getProjectSharedUsers(
-          '550e8400-e29b-41d4-a716-446655440999');
+      final users = taskService
+          .getProjectSharedUsers('550e8400-e29b-41d4-a716-446655440999');
       expect(users, isEmpty);
     });
   });
@@ -492,7 +492,8 @@ void main() {
       final result = await taskService.addColumn(project.id, col);
       expect(result, isTrue);
 
-      final updated = taskService.projects.firstWhere((p) => p.id == project.id);
+      final updated =
+          taskService.projects.firstWhere((p) => p.id == project.id);
       expect(updated.activeColumns.length, initialCols + 1);
     });
 
@@ -502,8 +503,8 @@ void main() {
         title: 'X',
         status: TaskStatus.todo,
       );
-      final result =
-          await taskService.addColumn('550e8400-e29b-41d4-a716-446655440999', col);
+      final result = await taskService.addColumn(
+          '550e8400-e29b-41d4-a716-446655440999', col);
       expect(result, isFalse);
     });
 
@@ -560,8 +561,8 @@ void main() {
     });
 
     test('reorderColumns returns false for missing project', () async {
-      final result = await taskService.reorderColumns(
-          '550e8400-e29b-41d4-a716-446655440999', ['a']);
+      final result = await taskService
+          .reorderColumns('550e8400-e29b-41d4-a716-446655440999', ['a']);
       expect(result, isFalse);
     });
 

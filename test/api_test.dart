@@ -157,7 +157,8 @@ void main() {
     }
 
     test('health returns 200 with counts', () async {
-      final response = await handler(_req('GET', '/api/v1/health', auth: false));
+      final response =
+          await handler(_req('GET', '/api/v1/health', auth: false));
       expect(response.statusCode, 200);
       final data = jsonDecode(await response.readAsString());
       expect(data['status'], 'ok');
@@ -221,15 +222,13 @@ void main() {
           status: TaskStatus.done);
       await taskBox.put(t.id, t);
 
-      final response =
-          await handler(_req('GET', '/api/v1/tasks?status=done'));
+      final response = await handler(_req('GET', '/api/v1/tasks?status=done'));
       final data = jsonDecode(await response.readAsString()) as List;
       expect(data.length, 1);
     });
 
     test('tasks GET invalid status returns 400', () async {
-      final response =
-          await handler(_req('GET', '/api/v1/tasks?status=bogus'));
+      final response = await handler(_req('GET', '/api/v1/tasks?status=bogus'));
       expect(response.statusCode, 400);
     });
 
@@ -332,8 +331,8 @@ void main() {
           createdAt: DateTime.now());
       await taskBox.put(t.id, t);
 
-      final response = await handler(_req('PATCH', '/api/v1/tasks/${t.id}',
-          body: {'title': '  '}));
+      final response = await handler(
+          _req('PATCH', '/api/v1/tasks/${t.id}', body: {'title': '  '}));
       expect(response.statusCode, 400);
     });
 
@@ -344,8 +343,8 @@ void main() {
           createdAt: DateTime.now());
       await taskBox.put(t.id, t);
 
-      final response = await handler(_req('PATCH', '/api/v1/tasks/${t.id}',
-          body: {'status': 'bogus'}));
+      final response = await handler(
+          _req('PATCH', '/api/v1/tasks/${t.id}', body: {'status': 'bogus'}));
       expect(response.statusCode, 400);
     });
 
@@ -362,8 +361,8 @@ void main() {
     });
 
     test('tasks DELETE 404 missing', () async {
-      final response = await handler(_req(
-          'DELETE', '/api/v1/tasks/550e8400-e29b-41d4-a716-446655440999'));
+      final response = await handler(
+          _req('DELETE', '/api/v1/tasks/550e8400-e29b-41d4-a716-446655440999'));
       expect(response.statusCode, 404);
     });
 
@@ -421,8 +420,8 @@ void main() {
       await projectBox.put(p1.id, p1);
       await projectBox.put(p2.id, p2);
 
-      final response = await handler(
-          _req('GET', '/api/v1/projects?include_archived=true'));
+      final response =
+          await handler(_req('GET', '/api/v1/projects?include_archived=true'));
       final data = jsonDecode(await response.readAsString()) as List;
       expect(data.length, 2);
     });
@@ -438,14 +437,14 @@ void main() {
     });
 
     test('projects POST missing name returns 400', () async {
-      final response = await handler(_req('POST', '/api/v1/projects',
-          body: {'project_key': 'NP'}));
+      final response = await handler(
+          _req('POST', '/api/v1/projects', body: {'project_key': 'NP'}));
       expect(response.statusCode, 400);
     });
 
     test('projects POST missing key returns 400', () async {
-      final response = await handler(
-          _req('POST', '/api/v1/projects', body: {'name': 'X'}));
+      final response =
+          await handler(_req('POST', '/api/v1/projects', body: {'name': 'X'}));
       expect(response.statusCode, 400);
     });
 
@@ -486,8 +485,8 @@ void main() {
           createdAt: DateTime.now());
       await projectBox.put(p.id, p);
 
-      final response = await handler(_req('PATCH', '/api/v1/projects/${p.id}',
-          body: {'name': '  '}));
+      final response = await handler(
+          _req('PATCH', '/api/v1/projects/${p.id}', body: {'name': '  '}));
       expect(response.statusCode, 400);
     });
 
@@ -595,8 +594,7 @@ void main() {
           createdAt: DateTime.now());
       await ritualBox.put(r.id, r);
 
-      final response =
-          await handler(_req('DELETE', '/api/v1/rituals/${r.id}'));
+      final response = await handler(_req('DELETE', '/api/v1/rituals/${r.id}'));
       expect(response.statusCode, 204);
       expect(ritualBox.get(r.id), isNull);
     });
@@ -778,8 +776,8 @@ void main() {
           createdAt: DateTime.now());
       await taskBox.put(t.id, t);
 
-      final response = await handler(_req('PATCH', '/api/v1/tasks/${t.id}',
-          body: {'priority': 'high'}));
+      final response = await handler(
+          _req('PATCH', '/api/v1/tasks/${t.id}', body: {'priority': 'high'}));
       expect(response.statusCode, 200);
       final data = jsonDecode(await response.readAsString());
       expect(data['priority'], 'high');
@@ -792,8 +790,8 @@ void main() {
           createdAt: DateTime.now());
       await taskBox.put(t.id, t);
 
-      final response = await handler(_req('PATCH', '/api/v1/tasks/${t.id}',
-          body: {'priority': 'bogus'}));
+      final response = await handler(
+          _req('PATCH', '/api/v1/tasks/${t.id}', body: {'priority': 'bogus'}));
       expect(response.statusCode, 400);
     });
 
@@ -819,8 +817,8 @@ void main() {
           dueDate: DateTime(2026, 6, 1));
       await taskBox.put(t.id, t);
 
-      final response = await handler(_req('PATCH', '/api/v1/tasks/${t.id}',
-          body: {'due_date': null}));
+      final response = await handler(
+          _req('PATCH', '/api/v1/tasks/${t.id}', body: {'due_date': null}));
       expect(response.statusCode, 200);
       final data = jsonDecode(await response.readAsString());
       expect(data['due_date'], isNull);
@@ -834,10 +832,10 @@ void main() {
           tags: ['old']);
       await taskBox.put(t.id, t);
 
-      final response = await handler(_req('PATCH', '/api/v1/tasks/${t.id}',
-          body: {
-            'tags': ['new1', 'new2']
-          }));
+      final response =
+          await handler(_req('PATCH', '/api/v1/tasks/${t.id}', body: {
+        'tags': ['new1', 'new2']
+      }));
       expect(response.statusCode, 200);
       final data = jsonDecode(await response.readAsString());
       expect(data['tags'], ['new1', 'new2']);
@@ -906,8 +904,8 @@ void main() {
           createdAt: DateTime.now());
       await ritualBox.put(r.id, r);
 
-      final response = await handler(_req('PATCH', '/api/v1/rituals/${r.id}',
-          body: {'title': '  '}));
+      final response = await handler(
+          _req('PATCH', '/api/v1/rituals/${r.id}', body: {'title': '  '}));
       expect(response.statusCode, 400);
     });
 
@@ -1048,8 +1046,7 @@ void main() {
           createdAt: DateTime.now());
       await taskBox.put(t.id, t);
 
-      final response =
-          await handler(_req('DELETE', '/api/v1/tasks/${t.id}'));
+      final response = await handler(_req('DELETE', '/api/v1/tasks/${t.id}'));
       expect(response.statusCode, 204);
     });
 
@@ -1110,8 +1107,7 @@ void main() {
           createdAt: DateTime.now());
       await ritualBox.put(r.id, r);
 
-      final response =
-          await handler(_req('DELETE', '/api/v1/rituals/${r.id}'));
+      final response = await handler(_req('DELETE', '/api/v1/rituals/${r.id}'));
       expect(response.statusCode, 204);
     });
 

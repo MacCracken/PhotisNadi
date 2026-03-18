@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/task_service.dart';
 import '../services/theme_service.dart';
@@ -17,12 +18,20 @@ class PaginatedTaskColumn extends StatefulWidget {
   final BoardColumn column;
   final Project project;
   final Map<String, FocusNode>? taskFocusNodes;
+  final bool isMultiSelectMode;
+  final Set<String> selectedTaskIds;
+  final ValueChanged<String>? onTaskToggleSelect;
+  final ValueChanged<String>? onTaskLongPress;
 
   const PaginatedTaskColumn({
     super.key,
     required this.column,
     required this.project,
     this.taskFocusNodes,
+    this.isMultiSelectMode = false,
+    this.selectedTaskIds = const {},
+    this.onTaskToggleSelect,
+    this.onTaskLongPress,
   });
 
   @override
@@ -89,61 +98,65 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
       page: _currentPage,
     );
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          _buildColumnHeader(color, totalCount),
-          Expanded(
-            child: DragTarget<Task>(
-              onAcceptWithDetails: (details) {
-                final task = details.data;
-                final taskService = context.read<TaskService>();
+    return Semantics(
+      label: '${widget.column.title} column, $totalCount tasks',
+      container: true,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            _buildColumnHeader(color, totalCount),
+            Expanded(
+              child: DragTarget<Task>(
+                onAcceptWithDetails: (details) {
+                  final task = details.data;
+                  final taskService = context.read<TaskService>();
 
-                if (widget.column.status == TaskStatus.done &&
-                    taskService.isTaskBlocked(task)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          'Cannot complete "${task.title}": dependencies not done'),
-                      backgroundColor: Colors.red,
+                  if (widget.column.status == TaskStatus.done &&
+                      taskService.isTaskBlocked(task)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'Cannot complete "${task.title}": dependencies not done'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  task.status = widget.column.status;
+                  taskService.updateTask(task);
+                },
+                builder: (context, candidateData, rejectedData) {
+                  final isDropTarget = candidateData.isNotEmpty;
+
+                  if (tasks.isEmpty && !isDropTarget) {
+                    return _buildEmptyState();
+                  }
+                  return ListView.builder(
+                    controller: _columnScrollController,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppConstants.smallPadding,
                     ),
+                    itemCount: tasks.length + (hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == tasks.length) {
+                        return _buildLoadingIndicator();
+                      }
+                      final task = tasks[index];
+                      return _buildDraggableTask(task);
+                    },
                   );
-                  return;
-                }
-
-                task.status = widget.column.status;
-                taskService.updateTask(task);
-              },
-              builder: (context, candidateData, rejectedData) {
-                final isDropTarget = candidateData.isNotEmpty;
-
-                if (tasks.isEmpty && !isDropTarget) {
-                  return _buildEmptyState();
-                }
-                return ListView.builder(
-                  controller: _columnScrollController,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppConstants.smallPadding,
-                  ),
-                  itemCount: tasks.length + (hasMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == tasks.length) {
-                      return _buildLoadingIndicator();
-                    }
-                    final task = tasks[index];
-                    return _buildDraggableTask(task);
-                  },
-                );
-              },
+                },
+              ),
             ),
-          ),
-          _buildAddTaskButton(),
-        ],
+            _buildAddTaskButton(),
+          ],
+        ),
       ),
     );
   }
@@ -182,6 +195,33 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
 
   Widget _buildDraggableTask(Task task) {
     final focusNode = widget.taskFocusNodes?[task.id];
+    final isSelected = widget.selectedTaskIds.contains(task.id);
+
+    if (widget.isMultiSelectMode) {
+      return Stack(
+        children: [
+          TaskCard(
+            task: task,
+            focusNode: focusNode,
+            onTap: () => widget.onTaskToggleSelect?.call(task.id),
+          ),
+          if (isSelected)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(2),
+                child: const Icon(Icons.check, size: 14, color: Colors.white),
+              ),
+            ),
+        ],
+      );
+    }
+
     return Draggable<Task>(
       data: task,
       feedback: Material(
@@ -209,7 +249,9 @@ class _PaginatedTaskColumnState extends State<PaginatedTaskColumn> {
         task: task,
         focusNode: focusNode,
         onTap: () => showTaskDetails(context, task),
-        onLongPress: () => showTaskMenu(context, task),
+        onLongPress: () {
+          widget.onTaskLongPress?.call(task.id);
+        },
       ),
     );
   }
@@ -239,6 +281,8 @@ class KanbanBoardState extends State<KanbanBoard> {
   final Map<String, FocusNode> _taskFocusNodes = {};
   int _focusedColumnIndex = 0;
   int _focusedTaskIndex = 0;
+  bool _isMultiSelectMode = false;
+  final Set<String> _selectedTaskIds = {};
 
   @override
   void dispose() {
@@ -290,27 +334,204 @@ class KanbanBoardState extends State<KanbanBoard> {
     _navigateTask(0);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Selector<TaskService, Project?>(
-          selector: (_, service) => service.selectedProject,
-          builder: (context, selectedProject, _) =>
-              _buildHeader(selectedProject),
-        ),
-        Expanded(
-          child: Selector<TaskService, String?>(
-            selector: (_, service) => service.selectedProjectId,
-            builder: (context, selectedProjectId, _) {
-              if (selectedProjectId == null) {
-                return _buildNoProjectSelected();
+  void _enterMultiSelect(String taskId) {
+    setState(() {
+      _isMultiSelectMode = true;
+      _selectedTaskIds.add(taskId);
+    });
+  }
+
+  void _toggleTaskSelection(String taskId) {
+    setState(() {
+      if (_selectedTaskIds.contains(taskId)) {
+        _selectedTaskIds.remove(taskId);
+        if (_selectedTaskIds.isEmpty) {
+          _isMultiSelectMode = false;
+        }
+      } else {
+        _selectedTaskIds.add(taskId);
+      }
+    });
+  }
+
+  void _exitMultiSelect() {
+    setState(() {
+      _isMultiSelectMode = false;
+      _selectedTaskIds.clear();
+    });
+  }
+
+  Widget _buildBulkActionBar() {
+    final taskService = context.read<TaskService>();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Theme.of(context).colorScheme.primaryContainer,
+      child: Row(
+        children: [
+          Text(
+            '${_selectedTaskIds.length} selected',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const Spacer(),
+          PopupMenuButton<TaskStatus>(
+            tooltip: 'Move status',
+            icon: const Icon(Icons.swap_horiz, size: 20),
+            itemBuilder: (context) => TaskStatus.values
+                .map((s) => PopupMenuItem(
+                      value: s,
+                      child: Text(formatStatus(s)),
+                    ))
+                .toList(),
+            onSelected: (status) {
+              taskService.bulkUpdateStatus(_selectedTaskIds.toList(), status);
+              _exitMultiSelect();
+            },
+          ),
+          PopupMenuButton<TaskPriority>(
+            tooltip: 'Change priority',
+            icon: const Icon(Icons.flag, size: 20),
+            itemBuilder: (context) => TaskPriority.values
+                .map((p) => PopupMenuItem(
+                      value: p,
+                      child: Text(capitalizeFirst(p.name)),
+                    ))
+                .toList(),
+            onSelected: (priority) {
+              taskService.bulkUpdatePriority(
+                  _selectedTaskIds.toList(), priority);
+              _exitMultiSelect();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.drive_file_move, size: 20),
+            tooltip: 'Move to project',
+            onPressed: () {
+              _showBulkMoveDialog(context);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+            tooltip: 'Delete',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete tasks?'),
+                  content: Text(
+                    'Delete ${_selectedTaskIds.length} selected tasks? '
+                    'This cannot be undone.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm ?? false) {
+                taskService.bulkDelete(_selectedTaskIds.toList());
+                _exitMultiSelect();
               }
-              return _buildColumns(selectedProjectId);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 20),
+            tooltip: 'Cancel',
+            onPressed: _exitMultiSelect,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBulkMoveDialog(BuildContext context) {
+    final taskService = context.read<TaskService>();
+    final projects = taskService.activeProjects;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Move to Project'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: projects.length,
+            itemBuilder: (context, index) {
+              final project = projects[index];
+              return ListTile(
+                leading: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: parseColor(project.color),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                title: Text(project.name),
+                subtitle: Text(project.projectKey),
+                onTap: () {
+                  taskService.bulkMoveToProject(
+                    _selectedTaskIds.toList(),
+                    project.id,
+                  );
+                  Navigator.pop(context);
+                  _exitMultiSelect();
+                },
+              );
             },
           ),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyboardListener(
+      focusNode: FocusNode(),
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape &&
+            _isMultiSelectMode) {
+          _exitMultiSelect();
+        }
+      },
+      child: Column(
+        children: [
+          if (_isMultiSelectMode) _buildBulkActionBar(),
+          Selector<TaskService, Project?>(
+            selector: (_, service) => service.selectedProject,
+            builder: (context, selectedProject, _) =>
+                _buildHeader(selectedProject),
+          ),
+          Expanded(
+            child: Selector<TaskService, String?>(
+              selector: (_, service) => service.selectedProjectId,
+              builder: (context, selectedProjectId, _) {
+                if (selectedProjectId == null) {
+                  return _buildNoProjectSelected();
+                }
+                return _buildColumns(selectedProjectId);
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -375,6 +596,10 @@ class KanbanBoardState extends State<KanbanBoard> {
                     column: column,
                     project: project,
                     taskFocusNodes: _taskFocusNodes,
+                    isMultiSelectMode: _isMultiSelectMode,
+                    selectedTaskIds: _selectedTaskIds,
+                    onTaskToggleSelect: _toggleTaskSelection,
+                    onTaskLongPress: _enterMultiSelect,
                   ),
                 );
               },

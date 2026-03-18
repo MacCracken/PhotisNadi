@@ -796,11 +796,13 @@ void main() {
       await tearDownTestHive();
     });
 
-    test('setSearchQuery updates and notifies', () {
+    test('setSearchQuery updates and notifies', () async {
       int notifyCount = 0;
       taskService.addListener(() => notifyCount++);
       taskService.setSearchQuery('test');
       expect(taskService.searchQuery, 'test');
+      // notifyListeners is debounced via Timer(Duration.zero, ...)
+      await Future.delayed(Duration.zero);
       expect(notifyCount, 1);
     });
 

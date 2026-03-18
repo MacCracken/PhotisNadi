@@ -151,9 +151,7 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
   List<Project> _filterProjects(List<Project> projects) {
     if (_searchQuery.isEmpty) return projects;
     final query = _searchQuery.toLowerCase();
-    return projects
-        .where((p) => p.name.toLowerCase().contains(query))
-        .toList();
+    return projects.where((p) => p.name.toLowerCase().contains(query)).toList();
   }
 
   Widget _buildSearchField() {
@@ -287,71 +285,80 @@ class _ProjectSidebarState extends State<ProjectSidebar> {
     final color = parseColor(project.color);
     final taskCount = taskService.getTasksForProject(project.id).length;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      color: isSelected ? color.withValues(alpha: 0.1) : null,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: isSelected ? BorderSide(color: color, width: 2) : BorderSide.none,
-      ),
-      child: InkWell(
-        onTap: isArchived ? null : () => taskService.selectProject(project.id),
-        onLongPress: () => showProjectMenu(context, project),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Center(
-                  child: Text(
-                    project.projectKey.length > 2
-                        ? project.projectKey.substring(0, 2)
-                        : project.projectKey,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: color,
+    return Semantics(
+      label: '${project.name}, $taskCount tasks',
+      selected: isSelected,
+      button: true,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        color: isSelected ? color.withValues(alpha: 0.1) : null,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side:
+              isSelected ? BorderSide(color: color, width: 2) : BorderSide.none,
+        ),
+        child: InkWell(
+          onTap:
+              isArchived ? null : () => taskService.selectProject(project.id),
+          onLongPress: () => showProjectMenu(context, project),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                ExcludeSemantics(
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Center(
+                      child: Text(
+                        project.projectKey.length > 2
+                            ? project.projectKey.substring(0, 2)
+                            : project.projectKey,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      project.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: isArchived ? Colors.grey : null,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        project.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: isArchived ? Colors.grey : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      '$taskCount tasks',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                      Text(
+                        '$taskCount tasks',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              if (isArchived)
-                Icon(
-                  Icons.archive,
-                  size: 16,
-                  color: Colors.grey.shade400,
-                ),
-            ],
+                if (isArchived)
+                  Icon(
+                    Icons.archive,
+                    size: 16,
+                    color: Colors.grey.shade400,
+                  ),
+              ],
+            ),
           ),
         ),
       ),

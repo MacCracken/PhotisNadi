@@ -50,7 +50,7 @@ class _SyncSettingsDialogState extends State<SyncSettingsDialog> {
                     style: TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 16),
-                  SupabaseConfigForm(),
+                  const SupabaseConfigForm(),
                 ],
               ],
             ),
@@ -75,7 +75,7 @@ class _SyncSettingsDialogState extends State<SyncSettingsDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!syncService.isAuthenticated)
-                AuthSection()
+                const AuthSection()
               else ...[
                 AccountSection(syncService: syncService),
                 const Divider(height: 24),

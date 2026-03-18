@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../services/sync_service.dart';
 
 class AuthSection extends StatefulWidget {
+  const AuthSection({super.key});
+
   @override
   State<AuthSection> createState() => _AuthSectionState();
 }

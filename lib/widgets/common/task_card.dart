@@ -47,142 +47,148 @@ class TaskCard extends StatelessWidget {
         ? AppConstants.titleMaxLinesCompact
         : AppConstants.titleMaxLines;
 
-    return Focus(
-      focusNode: focusNode,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.enter ||
-              event.logicalKey == LogicalKeyboardKey.space) {
-            onTap?.call();
-            return KeyEventResult.handled;
+    return Semantics(
+      label: '${task.title}, '
+          'priority ${task.priority.name}, '
+          'status ${task.status.name}',
+      button: true,
+      child: Focus(
+        focusNode: focusNode,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.space) {
+              onTap?.call();
+              return KeyEventResult.handled;
+            }
           }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Builder(
-        builder: (context) {
-          final isFocused = Focus.of(context).hasFocus;
-          return Card(
-            margin: EdgeInsets.symmetric(
-              horizontal: marginH,
-              vertical: marginV,
-            ),
-            elevation: isDragging
-                ? AppConstants.elevationHigh
-                : AppConstants.elevationLow,
-            shape: RoundedRectangleBorder(
-              borderRadius:
-                  BorderRadius.circular(AppConstants.cardBorderRadius),
-              side: isBlocked
-                  ? BorderSide(color: Colors.red.shade300, width: 2)
-                  : isFocused
-                      ? BorderSide(
-                          color: Theme.of(context).colorScheme.primary,
-                          width: 2,
-                        )
-                      : BorderSide.none,
-            ),
-            child: InkWell(
-              onTap: onTap,
-              onLongPress: onLongPress,
-              borderRadius:
-                  BorderRadius.circular(AppConstants.cardBorderRadius),
-              child: Padding(
-                padding: EdgeInsets.all(padding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(
-                        task, priorityColor, isBlocked, hasDependencies),
-                    SizedBox(
-                        height: compact
-                            ? AppConstants.tinyPadding
-                            : AppConstants.smallPadding),
-                    Text(
-                      task.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: compact ? 13 : 14,
-                      ),
-                      maxLines: titleMaxLines,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (task.description != null) ...[
-                      const SizedBox(height: AppConstants.tinyPadding),
-                      Text(
-                        task.description!,
-                        style: TextStyle(
-                          fontSize: compact ? 11 : 12,
-                          color: Colors.grey.shade600,
-                        ),
-                        maxLines: descMaxLines,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    if (task.subtasks.isNotEmpty) ...[
-                      const SizedBox(height: AppConstants.tinyPadding),
-                      _buildSubtaskProgress(task, compact),
-                    ],
-                    if (task.trackedMinutes > 0 ||
-                        task.estimatedMinutes != null) ...[
-                      const SizedBox(height: AppConstants.tinyPadding),
-                      _buildTimeIndicator(task, compact),
-                    ],
-                    if (task.recurrence != null) ...[
-                      const SizedBox(height: AppConstants.tinyPadding),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.repeat,
-                              size: compact ? 10 : 12,
-                              color: Colors.grey.shade500),
-                          const SizedBox(width: 3),
-                          Text(
-                            task.recurrence!,
-                            style: TextStyle(
-                              fontSize: compact ? 10 : 11,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (task.attachments.isNotEmpty) ...[
-                      const SizedBox(height: AppConstants.tinyPadding),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.attach_file,
-                              size: compact ? 10 : 12,
-                              color: Colors.grey.shade500),
-                          const SizedBox(width: 3),
-                          Text(
-                            '${task.attachments.length}',
-                            style: TextStyle(
-                              fontSize: compact ? 10 : 11,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (task.tags.isNotEmpty && !compact) ...[
-                      const SizedBox(height: AppConstants.smallPadding),
-                      _buildTags(task.tags, taskService),
-                    ],
-                    if (task.dueDate != null) ...[
+          return KeyEventResult.ignored;
+        },
+        child: Builder(
+          builder: (context) {
+            final isFocused = Focus.of(context).hasFocus;
+            return Card(
+              margin: EdgeInsets.symmetric(
+                horizontal: marginH,
+                vertical: marginV,
+              ),
+              elevation: isDragging
+                  ? AppConstants.elevationHigh
+                  : AppConstants.elevationLow,
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(AppConstants.cardBorderRadius),
+                side: isBlocked
+                    ? BorderSide(color: Colors.red.shade300, width: 2)
+                    : isFocused
+                        ? BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2,
+                          )
+                        : BorderSide.none,
+              ),
+              child: InkWell(
+                onTap: onTap,
+                onLongPress: onLongPress,
+                borderRadius:
+                    BorderRadius.circular(AppConstants.cardBorderRadius),
+                child: Padding(
+                  padding: EdgeInsets.all(padding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(
+                          task, priorityColor, isBlocked, hasDependencies),
                       SizedBox(
                           height: compact
                               ? AppConstants.tinyPadding
                               : AppConstants.smallPadding),
-                      _buildDueDate(task.dueDate!),
+                      Text(
+                        task.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: compact ? 13 : 14,
+                        ),
+                        maxLines: titleMaxLines,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (task.description != null) ...[
+                        const SizedBox(height: AppConstants.tinyPadding),
+                        Text(
+                          task.description!,
+                          style: TextStyle(
+                            fontSize: compact ? 11 : 12,
+                            color: Colors.grey.shade600,
+                          ),
+                          maxLines: descMaxLines,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (task.subtasks.isNotEmpty) ...[
+                        const SizedBox(height: AppConstants.tinyPadding),
+                        _buildSubtaskProgress(task, compact),
+                      ],
+                      if (task.trackedMinutes > 0 ||
+                          task.estimatedMinutes != null) ...[
+                        const SizedBox(height: AppConstants.tinyPadding),
+                        _buildTimeIndicator(task, compact),
+                      ],
+                      if (task.recurrence != null) ...[
+                        const SizedBox(height: AppConstants.tinyPadding),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.repeat,
+                                size: compact ? 10 : 12,
+                                color: Colors.grey.shade500),
+                            const SizedBox(width: 3),
+                            Text(
+                              task.recurrence!,
+                              style: TextStyle(
+                                fontSize: compact ? 10 : 11,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (task.attachments.isNotEmpty) ...[
+                        const SizedBox(height: AppConstants.tinyPadding),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.attach_file,
+                                size: compact ? 10 : 12,
+                                color: Colors.grey.shade500),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${task.attachments.length}',
+                              style: TextStyle(
+                                fontSize: compact ? 10 : 11,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (task.tags.isNotEmpty && !compact) ...[
+                        const SizedBox(height: AppConstants.smallPadding),
+                        _buildTags(task.tags, taskService),
+                      ],
+                      if (task.dueDate != null) ...[
+                        SizedBox(
+                            height: compact
+                                ? AppConstants.tinyPadding
+                                : AppConstants.smallPadding),
+                        _buildDueDate(task.dueDate!),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -222,12 +228,14 @@ class TaskCard extends StatelessWidget {
           const SizedBox(width: 4),
         ],
         const Spacer(),
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: priorityColor,
-            shape: BoxShape.circle,
+        ExcludeSemantics(
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: priorityColor,
+              shape: BoxShape.circle,
+            ),
           ),
         ),
       ],

@@ -305,7 +305,7 @@ void showEditProjectDialog(BuildContext context, Project project) {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (nameController.text.isNotEmpty &&
                   keyController.text.isNotEmpty) {
                 project.name = nameController.text;
@@ -313,8 +313,20 @@ void showEditProjectDialog(BuildContext context, Project project) {
                 project.description =
                     descController.text.isNotEmpty ? descController.text : null;
                 project.color = selectedColor;
-                context.read<TaskService>().updateProject(project);
-                Navigator.pop(context);
+                final success =
+                    await context.read<TaskService>().updateProject(project);
+                if (context.mounted) {
+                  if (success) {
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to save project'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               }
             },
             child: const Text('Save'),

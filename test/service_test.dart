@@ -600,8 +600,14 @@ void main() {
       expect(
           names,
           containsAll([
-            'Indigo', 'Teal', 'Rose', 'Amber',
-            'Emerald', 'Violet', 'Sky', 'Orange'
+            'Indigo',
+            'Teal',
+            'Rose',
+            'Amber',
+            'Emerald',
+            'Violet',
+            'Sky',
+            'Orange'
           ]));
     });
   });

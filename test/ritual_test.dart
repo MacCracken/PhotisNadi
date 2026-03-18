@@ -395,8 +395,7 @@ void main() {
 
       await taskService.restoreRitual(ritual);
       expect(taskService.rituals.where((r) => r.id == ritual.id).length, 1);
-      final restored =
-          taskService.rituals.firstWhere((r) => r.id == ritual.id);
+      final restored = taskService.rituals.firstWhere((r) => r.id == ritual.id);
       expect(restored.title, 'Deletable Ritual');
       expect(restored.description, 'ritual desc');
     });

@@ -4,6 +4,8 @@ import '../../../services/supabase_config_service.dart';
 import '../../../services/sync_service.dart';
 
 class SupabaseConfigForm extends StatefulWidget {
+  const SupabaseConfigForm({super.key});
+
   @override
   State<SupabaseConfigForm> createState() => _SupabaseConfigFormState();
 }

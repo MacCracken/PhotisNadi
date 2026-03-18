@@ -107,9 +107,8 @@ void showEditRitualDialog(BuildContext context, Ritual ritual) {
                 description:
                     descController.text.isNotEmpty ? descController.text : null,
               );
-              final success = await context
-                  .read<TaskService>()
-                  .updateRitual(updatedRitual);
+              final success =
+                  await context.read<TaskService>().updateRitual(updatedRitual);
               if (context.mounted) {
                 if (success) {
                   Navigator.pop(context);

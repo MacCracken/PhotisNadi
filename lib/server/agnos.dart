@@ -71,8 +71,8 @@ class AgnosIntegration {
         _startHeartbeat();
         return true;
       } else {
-        stderr.writeln(
-            'AGNOS agent registration failed: ${response.statusCode}');
+        stderr
+            .writeln('AGNOS agent registration failed: ${response.statusCode}');
         return false;
       }
     } catch (e) {

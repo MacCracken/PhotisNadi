@@ -243,8 +243,7 @@ class _RitualsSidebarState extends State<RitualsSidebar> {
                         content: const Text('Ritual deleted'),
                         action: SnackBarAction(
                           label: 'Undo',
-                          onPressed: () =>
-                              taskService.restoreRitual(ritual),
+                          onPressed: () => taskService.restoreRitual(ritual),
                         ),
                       ),
                     );
