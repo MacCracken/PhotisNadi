@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/photisnadi-core",
+    "crates/photisnadi-store",
+    "crates/photisnadi-mcp",
+    "crates/photisnadi-server",
+    "crates/photisnadi-agnos",
+]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-std", "io-util"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4", features = ["derive"] }
+rusqlite = { version = "0.34", features = ["bundled"] }
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+rand = "0.8"
+
+[package]
+name = "photisnadi"
+version = "2026.3.18-1"
+edition = "2024"
+description = "AI-native task management and ritual tracking for AGNOS"
+license = "GPL-3.0"
+
+[dependencies]
+photisnadi-core = { path = "crates/photisnadi-core" }
+photisnadi-store = { path = "crates/photisnadi-store" }
+photisnadi-mcp = { path = "crates/photisnadi-mcp" }
+photisnadi-server = { path = "crates/photisnadi-server" }
+photisnadi-agnos = { path = "crates/photisnadi-agnos" }
+clap = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde_json = { workspace = true }
+rand = { workspace = true }
+
+[[bin]]
+name = "photisnadi"
+path = "src/main.rs"

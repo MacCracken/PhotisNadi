@@ -1,0 +1,14 @@
+[package]
+name = "photisnadi-mcp"
+version = "2026.3.18-1"
+edition = "2024"
+
+[dependencies]
+photisnadi-core = { path = "../photisnadi-core" }
+photisnadi-store = { path = "../photisnadi-store" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }

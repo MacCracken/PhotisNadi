@@ -2,6 +2,71 @@
 
 All notable changes to Photis Nadi will be documented in this file.
 
+## [2026.3.18-1]
+
+### Added
+- **Rust native backend** (`v2/`): Full port of the Dart server to a native Rust binary
+  - `photisnadi-core` — models, enums, validators (Task, Project, Ritual, Board, Tag)
+  - `photisnadi-store` — SQLite CRUD with JSON blob pattern (rusqlite)
+  - `photisnadi-mcp` — 6 MCP tools + JSON-RPC 2.0 stdio transport
+  - `photisnadi-agnos` — agent registration, heartbeats, audit forwarding (reqwest)
+  - `photisnadi-server` — axum REST API matching v1 Dart contract exactly
+  - CLI binary with `--db`, `--headless`, `--mcp`, `--bind`, `--port`, `--api-key` flags
+  - 56 Rust tests across all crates
+- CI: `rust-test` job (build + test v2 workspace), `build-rust-server` artifact
+- Release: `photisnadi-server-{version}-linux-x64.tar.gz` published to GitHub releases
+- Roadmap: v3 egui native UI migration plan
+
+### Removed
+- Old Dart backend: `bin/server.dart`, `lib/server/` (api, auth, serializers, agnos)
+- `shelf` and `shelf_router` dependencies from pubspec.yaml
+- `test/api_test.dart` (replaced by v2 Rust server tests)
+- AGNOS integration tests from `test/service_test.dart` (replaced by v2 Rust tests)
+
+### Changed
+- Serializers moved from `lib/server/serializers.dart` to `lib/common/serializers.dart`
+- Dockerfile: two-stage build (Rust builder + Flutter builder), ships native binary
+- Docker entrypoint: runs Rust binary instead of Dart server bundle
+- Caddy proxy: API port 8081 → 8094
+- Docker Compose: ports updated to 8094
+- `tools/bump-version.sh`: updated for v2 Cargo workspace (replaces `lib/server/agnos.dart`)
+- CI workflows: all platform builds gated on `rust-test`, security scans include `.rs` files
+
+---
+
+## [2026.3.18]
+
+### Added
+- `lib/server/serializers.dart` — JSON serializers extracted as standalone functions
+- `tools/bump-version.sh` — version bump script for all version-bearing files
+- Test suite expansion (575+ tests split into 9 focused files):
+  - `test/api_test.dart` — API router integration, auth middleware (1139 lines)
+  - `test/hive_test.dart` — Hive round-trips, adapters, pagination, tag service
+  - `test/model_test.dart` — Task/Project/Board/Tag models, validation, utils
+  - `test/project_test.dart` — Projects, sharing, columns, boards
+  - `test/ritual_test.dart` — Ritual reset, model, undo/restore
+  - `test/service_test.dart` — YeomanService, export/import, ThemeService, AGNOS
+  - `test/sync_test.dart` — Sync serialization, board sync, config, merge, conflicts
+  - `test/task_service_test.dart` — TaskService CRUD, dependencies, subtasks, time tracking
+  - `test/widget_dialog_test.dart` — Dialog widget tests
+  - `test/widget_test.dart` — Common widget tests
+
+### Changed
+- Widget refactoring: task dialogs, sync dialogs, and kanban board split into smaller modules
+- Ritual model: improved reset logic
+- Task CRUD: repository and service layer cleanup
+- Search/filter bar and task card UI improvements
+- Project sidebar and rituals sidebar refinements
+- CI/release workflow fixes
+
+### Fixed
+- Auth middleware edge cases
+- API endpoint validation and error handling improvements
+- Ritual reset timing and streak tracking
+- Code formatting and lint compliance
+
+---
+
 ## [2026.3.10-1]
 
 ### Fixed

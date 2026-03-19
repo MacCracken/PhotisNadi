@@ -40,7 +40,7 @@ jobs:
       with:
         channel: 'stable'
     - run: flutter pub get
-    - run: flutter test test/task_service_test.dart test/project_test.dart test/ritual_test.dart test/model_test.dart test/api_test.dart test/sync_test.dart test/service_test.dart test/hive_test.dart
+    - run: flutter test test/task_service_test.dart test/project_test.dart test/ritual_test.dart test/model_test.dart test/sync_test.dart test/service_test.dart test/hive_test.dart
 
   widget-test:
     name: Widget Tests
@@ -53,6 +53,23 @@ jobs:
         channel: 'stable'
     - run: flutter pub get
     - run: flutter test test/widget_test.dart test/widget_dialog_test.dart
+
+  rust-test:
+    name: Rust Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: v2
+    - name: Build
+      working-directory: v2
+      run: cargo build --workspace
+    - name: Test
+      working-directory: v2
+      run: cargo test --workspace
 
   e2e-test:
     name: E2E Tests
@@ -101,7 +118,7 @@ jobs:
       run: |
         # Scan for potential hardcoded secrets (API keys, passwords, tokens)
         PATTERNS='(password|secret|api_key|apikey|access_token|private_key)\s*[:=]\s*["\x27][^"\x27]{8,}'
-        if grep -rEi "${PATTERNS}" lib/ bin/ --include='*.dart' | grep -v '//.*\bTODO\b' | grep -v 'test' | grep -v '_example' | grep -v 'placeholder'; then
+        if grep -rEi "${PATTERNS}" lib/ v2/src/ v2/crates/ --include='*.dart' --include='*.rs' | grep -v '//.*\bTODO\b' | grep -v 'test' | grep -v '_example' | grep -v 'placeholder'; then
           echo "::warning::Potential hardcoded secrets detected — review the matches above"
         else
           echo "No hardcoded secrets found"
@@ -109,7 +126,7 @@ jobs:
     - name: Check for insecure HTTP usage
       run: |
         # Flag any http:// URLs (should use https://) — exclude localhost, logging, and content-type
-        if grep -rn 'http://' lib/ bin/ --include='*.dart' | grep -v 'localhost' | grep -v '127.0.0.1' | grep -v '0.0.0.0' | grep -v '//.*http://' | grep -v 'content-type' | grep -v 'print\|log\|listening'; then
+        if grep -rn 'http://' lib/ v2/src/ v2/crates/ --include='*.dart' --include='*.rs' | grep -v 'localhost' | grep -v '127.0.0.1' | grep -v '0.0.0.0' | grep -v '//.*http://' | grep -v 'content-type' | grep -v 'print\|log\|listening\|tracing'; then
           echo "::warning::Non-localhost HTTP URLs found — consider using HTTPS"
         else
           echo "No insecure HTTP URLs found"
@@ -135,7 +152,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-format, unit-test, widget-test, security]
+    needs: [lint-format, unit-test, widget-test, rust-test, security]
     steps:
     - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
@@ -155,10 +172,30 @@ jobs:
         path: build/linux/x64/release/bundle/
         retention-days: 30
 
+  build-rust-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [rust-test, security]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: v2
+    - name: Build release binary
+      working-directory: v2
+      run: cargo build --release
+    - name: Upload server artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-linux-x64
+        path: v2/target/release/photisnadi
+        retention-days: 30
+
   build-windows:
     runs-on: windows-latest
     timeout-minutes: 30
-    needs: [lint-format, unit-test, widget-test, security]
+    needs: [lint-format, unit-test, widget-test, rust-test, security]
     steps:
     - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
@@ -177,7 +214,7 @@ jobs:
   build-macos:
     runs-on: macos-latest
     timeout-minutes: 30
-    needs: [lint-format, unit-test, widget-test, security]
+    needs: [lint-format, unit-test, widget-test, rust-test, security]
     steps:
     - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
@@ -196,7 +233,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lint-format, unit-test, widget-test, security]
+    needs: [lint-format, unit-test, widget-test, rust-test, security]
     steps:
     - uses: actions/checkout@v4
     - uses: subosito/flutter-action@v2
@@ -215,7 +252,7 @@ jobs:
   build-docker:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-format, unit-test, widget-test, security]
+    needs: [lint-format, unit-test, widget-test, rust-test, security]
     steps:
     - uses: actions/checkout@v4
     - name: Set up Docker Buildx

@@ -95,6 +95,27 @@ jobs:
         RELEASE_VERSION: ${{ needs.version.outputs.version }}
       run: gh release upload "${RELEASE_VERSION}" photisnadi-*-linux-x64.tar.gz --clobber --repo "${{ github.repository }}"
 
+  build-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ci, version, create-release]
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: server-linux-x64
+        path: server
+    - name: Package server binary
+      env:
+        VERSION_SLUG: ${{ needs.version.outputs.version_slug }}
+      run: |
+        chmod +x server/photisnadi
+        tar -czf "photisnadi-server-${VERSION_SLUG}-linux-x64.tar.gz" -C server photisnadi
+    - name: Upload to release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_VERSION: ${{ needs.version.outputs.version }}
+      run: gh release upload "${RELEASE_VERSION}" photisnadi-server-*-linux-x64.tar.gz --clobber --repo "${{ github.repository }}"
+
   build-windows:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -195,7 +216,7 @@ jobs:
   checksums:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [version, build-linux, build-windows, build-macos, build-web]
+    needs: [version, build-linux, build-server, build-windows, build-macos, build-web]
     steps:
     - name: Download release assets
       env:

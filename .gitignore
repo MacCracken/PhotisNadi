@@ -22,3 +22,6 @@ macos/.symlinks/
 *.swp
 *.swo
 *~
+
+# Rust
+v2/target/

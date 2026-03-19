@@ -4,8 +4,10 @@ set -e
 case "${1:-web}" in
   web)
     # Always start API server in background
-    echo "Starting Photis Nadi API server on port ${PHOTISNADI_API_PORT:-8081}..."
-    /opt/photisnadi/server_bundle/bin/server &
+    echo "Starting Photis Nadi API server on port ${PHOTISNADI_API_PORT:-8094}..."
+    /opt/photisnadi/photisnadi --headless \
+      --db /opt/photisnadi/data/photisnadi.db \
+      --port "${PHOTISNADI_API_PORT:-8094}" &
     API_PID=$!
     # Shut down API server when entrypoint exits
     trap "kill $API_PID 2>/dev/null" EXIT
@@ -15,12 +17,9 @@ case "${1:-web}" in
     ;;
   api)
     echo "Running Photis Nadi API server only..."
-    exec /opt/photisnadi/server_bundle/bin/server
-    ;;
-  linux)
-    shift
-    echo "Running Photis Nadi Linux binary..."
-    exec /opt/photisnadi/linux/photisnadi "$@"
+    exec /opt/photisnadi/photisnadi --headless \
+      --db /opt/photisnadi/data/photisnadi.db \
+      --port "${PHOTISNADI_API_PORT:-8094}"
     ;;
   *)
     exec "$@"

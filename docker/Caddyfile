@@ -1,7 +1,7 @@
 :8080 {
-	# API requests go to the Dart API server
+	# API requests go to the Rust API server
 	handle /api/* {
-		reverse_proxy localhost:8081
+		reverse_proxy localhost:8094
 	}
 
 	# Everything else is the Flutter SPA

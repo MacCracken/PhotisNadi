@@ -1,0 +1,15 @@
+[package]
+name = "photisnadi-store"
+version = "2026.3.18-1"
+edition = "2024"
+
+[dependencies]
+photisnadi-core = { path = "../photisnadi-core" }
+rusqlite = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

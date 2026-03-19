@@ -1,0 +1,10 @@
+[package]
+name = "photisnadi-core"
+version = "2026.3.18-1"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }

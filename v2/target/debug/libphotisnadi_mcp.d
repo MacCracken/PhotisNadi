@@ -1,0 +1,1 @@
+/home/macro/Repos/photisnadi/v2/target/debug/libphotisnadi_mcp.rlib: /home/macro/Repos/photisnadi/v2/crates/photisnadi-core/src/lib.rs /home/macro/Repos/photisnadi/v2/crates/photisnadi-mcp/src/lib.rs /home/macro/Repos/photisnadi/v2/crates/photisnadi-mcp/src/transport.rs /home/macro/Repos/photisnadi/v2/crates/photisnadi-store/src/lib.rs

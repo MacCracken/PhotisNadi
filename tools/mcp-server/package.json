@@ -1,6 +1,6 @@
 {
   "name": "@photisnadi/mcp-server",
-  "version": "2026.3.18",
+  "version": "2026.3.18-1",
   "description": "MCP server exposing Photis Nadi task CRUD via REST API (Supabase fallback)",
   "type": "module",
   "main": "index.js",

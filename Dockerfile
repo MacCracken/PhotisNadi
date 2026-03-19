@@ -1,12 +1,21 @@
-# Photis Nadi — Flutter web build + REST API server on agnosticos base
+# Photis Nadi — Flutter web build + Rust API server
 #
 # Build:  docker build -t photisnadi:latest .
-# Run:    docker run --rm -p 8080:8080 -p 8081:8081 -e PHOTISNADI_API_KEY=changeme photisnadi:latest
+# Run:    docker run --rm -p 8080:8080 -p 8094:8094 -e PHOTISNADI_API_KEY=changeme photisnadi:latest
 
 # ---------------------------------------------------------------------------
-# Stage 1: Flutter web build + Dart API server compile
+# Stage 1: Build Rust API server
 # ---------------------------------------------------------------------------
-FROM debian:bookworm-slim AS builder
+FROM rust:bookworm AS rust-builder
+
+WORKDIR /build
+COPY v2/ ./
+RUN cargo build --release
+
+# ---------------------------------------------------------------------------
+# Stage 2: Flutter web build
+# ---------------------------------------------------------------------------
+FROM debian:bookworm-slim AS flutter-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -29,12 +38,8 @@ RUN flutter pub get
 COPY . .
 RUN flutter build web --release
 
-# Compile the REST API server to a native binary.
-# Uses 'dart build cli' which supports build hooks (unlike 'dart compile exe').
-RUN dart build cli --target bin/server.dart -o build/server_bundle
-
 # ---------------------------------------------------------------------------
-# Stage 2: Serve on agnosticos with Caddy + API server
+# Stage 3: Serve on agnosticos with Caddy + API server
 # ---------------------------------------------------------------------------
 FROM ghcr.io/maccracken/agnosticos:latest
 
@@ -53,13 +58,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN mkdir -p /opt/photisnadi/web /opt/photisnadi/data \
     && chown -R photisnadi:photisnadi /opt/photisnadi
 
-COPY --from=builder /build/build/web/ /opt/photisnadi/web/
-COPY --from=builder /build/build/server_bundle/bundle/ /opt/photisnadi/server_bundle/
+COPY --from=flutter-builder /build/build/web/ /opt/photisnadi/web/
+COPY --from=rust-builder /build/target/release/photisnadi /opt/photisnadi/photisnadi
 COPY docker/Caddyfile /opt/photisnadi/Caddyfile
 COPY docker/entrypoint.sh /opt/photisnadi/entrypoint.sh
-RUN chmod +x /opt/photisnadi/entrypoint.sh /opt/photisnadi/server_bundle/bin/server
+RUN chmod +x /opt/photisnadi/entrypoint.sh /opt/photisnadi/photisnadi
 
-EXPOSE 8080 8081
+EXPOSE 8080 8094
 
 USER photisnadi
 WORKDIR /opt/photisnadi

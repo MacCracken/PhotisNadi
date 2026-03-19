@@ -28,12 +28,17 @@ echo "Bumping to version: $VERSION"
 sed -i "s/^version: .*/version: $VERSION/" "$REPO_ROOT/pubspec.yaml"
 echo "  updated pubspec.yaml"
 
-# lib/server/agnos.dart
-sed -i "s/'version': '[^']*'/'version': '$VERSION'/" "$REPO_ROOT/lib/server/agnos.dart"
-echo "  updated lib/server/agnos.dart"
+# v2/ Cargo workspace + all crates
+for f in "$REPO_ROOT"/v2/Cargo.toml "$REPO_ROOT"/v2/crates/*/Cargo.toml; do
+  sed -i "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" "$f"
+  echo "  updated ${f#$REPO_ROOT/}"
+done
 
-# tools/mcp-server/package.json
-sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$REPO_ROOT/tools/mcp-server/package.json"
-echo "  updated tools/mcp-server/package.json"
+# tools/mcp-server/package.json (if it exists)
+MCP_PKG="$REPO_ROOT/tools/mcp-server/package.json"
+if [ -f "$MCP_PKG" ]; then
+  sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$MCP_PKG"
+  echo "  updated tools/mcp-server/package.json"
+fi
 
 echo "Done. All files updated to $VERSION"

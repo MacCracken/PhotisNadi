@@ -3,7 +3,7 @@ description: Photis Nadi - A cross-platform productivity app combining Kanban ta
 
 publish_to: 'none'
 
-version: 2026.3.18
+version: 2026.3.18-1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -40,10 +40,6 @@ dependencies:
    
   # HTTP client
   http: ^1.2.0
-
-  # REST API server
-  shelf: ^1.4.0
-  shelf_router: ^1.1.0
 
   # Notifications
   flutter_local_notifications: ^17.0.0

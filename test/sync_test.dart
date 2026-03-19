@@ -5,7 +5,7 @@ import 'package:photisnadi/models/board.dart';
 import 'package:photisnadi/models/project.dart';
 import 'package:photisnadi/models/tag.dart';
 import 'package:photisnadi/services/sync_service.dart';
-import 'package:photisnadi/server/serializers.dart';
+import 'package:photisnadi/common/serializers.dart';
 
 void main() {
   group('Sync Serialization Tests', () {
