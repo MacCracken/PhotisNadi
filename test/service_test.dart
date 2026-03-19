@@ -12,6 +12,8 @@ import 'package:photisnadi/services/theme_service.dart';
 import 'package:photisnadi/services/export_import_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart' as http_testing;
 
 bool _adaptersRegistered = false;
 
