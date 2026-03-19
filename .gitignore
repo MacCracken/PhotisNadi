@@ -32,8 +32,9 @@ coverage/
 *.swo
 *~
 
-# Claude Code hooks (local dev tooling)
-.claude/
+# Claude Code (keep hooks, ignore sessions/cache)
+.claude/projects/
+.claude/settings.*
 
 # Rust
 v2/target/
